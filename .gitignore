@@ -1,0 +1,10 @@
+# Ignore binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Ignore build output directory
+bin/
+build/
