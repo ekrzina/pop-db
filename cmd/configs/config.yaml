@@ -1,0 +1,6 @@
+database:
+  path: "./dbase"
+  name: "population.db"
+  backupPath: "./backup"
+  autoMigrate: true
+  foreignKeys: true
