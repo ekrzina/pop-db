@@ -7,7 +7,7 @@ import (
 
 // PersonRepository stores database object for access to SQL database
 type PersonRepository struct {
-	db *db.SQLLiteDB
+	db *db.DbManager
 }
 
 // CreatePerson creates a single person and adds it to database file
@@ -244,6 +244,6 @@ func (r *PersonRepository) CreateFullPerson(
 }
 
 // NewPersonRepository returns PersonRepository object
-func NewPersonRepository(db *db.SQLLiteDB) *PersonRepository {
+func NewPersonRepository(db *db.DbManager) *PersonRepository {
 	return &PersonRepository{db: db}
 }

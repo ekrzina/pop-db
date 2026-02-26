@@ -2,6 +2,8 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 	"path/filepath"
 	"pop-db/internal/utils"
 	"time"
@@ -12,7 +14,7 @@ import (
 )
 
 // DBSetup structure represents struct to contain database setup data fetched from configuration file
-type DBSetup struct {
+type DbSetup struct {
 	Path        string `mapstructure:"path"`
 	Name        string `mapstructure:"name"`
 	BackupPath  string `mapstructure:"backupPath"`
@@ -20,19 +22,27 @@ type DBSetup struct {
 	ForeignKeys bool   `mapstructure:"foreignKeys"`
 }
 
-// SQLLiteDB structure represents struct to contain database configuration and object
-type SQLLiteDB struct {
+// DbManager structure represents struct to contain database configuration and object
+type DbManager struct {
 	cfg    *viper.Viper
-	config *DBSetup
+	config *DbSetup
 	logger *zerolog.Logger
 	db     *sql.DB
 	OS     utils.OS
 }
 
+// BackupMetadata represents additional information on created backup
+type BackupMetadata struct {
+	Filename  string
+	Path      string
+	CreatedAt time.Time
+	SizeBytes int64
+}
+
 // migrate creates personal identification and medical table if tables do not already exist.
 // Returns:
 //   - error: Returned on unsuccessful table creation.
-func (s *SQLLiteDB) migrate() error {
+func (s *DbManager) migrate() error {
 	personTable := `
 	CREATE TABLE IF NOT EXISTS person (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,27 +75,100 @@ func (s *SQLLiteDB) migrate() error {
 	return nil
 }
 
+// generateBackupFilename generates new backup file name from current time and configuration parameters
+// Parameters:
+//   - t: Time of database backup writing request.
+func (s *DbManager) generateBackupFilename(t time.Time) string {
+	return s.config.Name + "_" + t.Format("20060102_150405") + ".bak"
+}
+
 // WriteBackup writes backup database to specified configuraion filepath
 // Returns:
+//   - *BackupMetadata: metadata of created backup file
 //   - error: Error on backup fail.
-func (s *SQLLiteDB) WriteBackup() error {
-	source := filepath.Join(s.config.Path, s.config.Name)
-	dest := filepath.Join(
-		s.config.BackupPath,
-		s.config.Name+"_"+time.Now().Format("20060102_150405")+".bak",
-	)
-	input, err := s.OS.ReadFile(source)
+func (s *DbManager) WriteBackup() (*BackupMetadata, error) {
+	now := time.Now().UTC()
+
+	sourcePath := filepath.Join(s.config.Path, s.config.Name)
+	filename := s.generateBackupFilename(now)
+	destPath := filepath.Join(s.config.BackupPath, filename)
+	// Open source file database and defer closing
+	sourceFile, err := s.OS.Open(sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	defer sourceFile.Close()
+	// Create destination file and defer closing
+	destFile, err := s.OS.Create(destPath)
+	if err != nil {
+		return nil, err
+	}
+	defer destFile.Close()
+	// Stream copy of source file to destination file
+	size, err := s.OS.Copy(destFile, sourceFile)
+	if err != nil {
+		return nil, err
+	}
+	metadata := &BackupMetadata{
+		Filename:  filename,
+		Path:      destPath,
+		CreatedAt: now,
+		SizeBytes: size,
+	}
+	return metadata, nil
+}
+
+// ValidateBackup checks if database backup is located on designated file
+// Parameters:
+//   - backupPath: Full file path name of the backup to restore.
+//
+// Returns:
+//   - error: Error if stating file fails
+func (s *DbManager) validateBackup(backupPath string) error {
+	if _, err := s.OS.Stat(backupPath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("backup not found")
+		}
+		return err
+	}
+	return nil
+}
+
+// RestoreBackup overwrites current database with backup database file
+// Parameters:
+//   - filename: Full file name of the backup to restore to.
+//
+// Returns:
+//   - error: Error returned in case backup does not exist, overwriting the database fails or content is not copied properly.
+func (s *DbManager) RestoreBackup(filename string) error {
+	backupPath := filepath.Join(s.config.BackupPath, filename)
+	if err := s.validateBackup(backupPath); err != nil {
+		return err
+	}
+	// Open backup file and defer closing
+	src, err := s.OS.Open(backupPath)
 	if err != nil {
 		return err
 	}
-	return s.OS.WriteFile(dest, input, 0644)
+	defer src.Close()
+	// Create/overwrite active database file
+	dst, err := s.OS.Create(filepath.Join(s.config.Path + s.config.Name))
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	// Copy contents
+	if _, err := s.OS.Copy(dst, src); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Begin is a wrapper method for sql.DB's Begin method for transaction support.
 // Returns:
 //   - *sql.Tx - Tx object for transaction support.
 //   - error - Error on transaction beginning setup failure.
-func (s *SQLLiteDB) Begin() (*sql.Tx, error) {
+func (s *DbManager) Begin() (*sql.Tx, error) {
 	return s.db.Begin()
 }
 
@@ -97,7 +180,7 @@ func (s *SQLLiteDB) Begin() (*sql.Tx, error) {
 // Returns:
 //   - sql.Result: The result of the SQL query.
 //   - error: An error is returned on query failure.
-func (s *SQLLiteDB) Execute(query string, args ...any) (sql.Result, error) {
+func (s *DbManager) Execute(query string, args ...any) (sql.Result, error) {
 	return s.db.Exec(query, args)
 }
 
@@ -109,7 +192,7 @@ func (s *SQLLiteDB) Execute(query string, args ...any) (sql.Result, error) {
 // Returns:
 //   - sql.Rows: The result rows of the SQL query.
 //   - error: An error is returned on query failure.
-func (s *SQLLiteDB) Query(query string, args ...any) (*sql.Rows, error) {
+func (s *DbManager) Query(query string, args ...any) (*sql.Rows, error) {
 	return s.db.Query(query, args...)
 }
 
@@ -120,14 +203,14 @@ func (s *SQLLiteDB) Query(query string, args ...any) (*sql.Rows, error) {
 //
 // Returns:
 //   - sql.Rows: The result row of the SQL query.
-func (s *SQLLiteDB) QueryRow(query string, args ...any) *sql.Row {
+func (s *DbManager) QueryRow(query string, args ...any) *sql.Row {
 	return s.db.QueryRow(query, args...)
 }
 
 // Close is a wrapper for sql.DB's Close method. Closes the database connection.
 // Returns:
 // - error: Error on closing failure.
-func (s *SQLLiteDB) Close() error {
+func (s *DbManager) Close() error {
 	return s.db.Close()
 }
 
@@ -139,8 +222,8 @@ func (s *SQLLiteDB) Close() error {
 // Returns:
 //   - sql.DB: SQL database structure.
 //   - error: Returned on unsuccessful database creation.
-func NewSQLiteDB(v *viper.Viper, logger zerolog.Logger) (*SQLLiteDB, error) {
-	var cfg DBSetup
+func NewSQLiteDB(v *viper.Viper, logger zerolog.Logger) (*DbManager, error) {
+	var cfg DbSetup
 	if err := v.UnmarshalKey("database", &cfg); err != nil {
 		return nil, err
 	}
@@ -157,12 +240,12 @@ func NewSQLiteDB(v *viper.Viper, logger zerolog.Logger) (*SQLLiteDB, error) {
 		}
 	}
 	// Create sqllite object
-	sqlite := &SQLLiteDB{
+	sqlite := &DbManager{
 		cfg:    v,
 		config: &cfg,
 		logger: &logger,
 		db:     dbase,
-		OS:     utils.RealOS{},
+		OS:     &utils.RealOS{},
 	}
 	// Check if database should auto migrate
 	if cfg.AutoMigrate {

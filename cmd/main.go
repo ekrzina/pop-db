@@ -101,7 +101,8 @@ func main() {
 
 	logger.Info().Interface("person", fullPerson).Msg("Fetched person")
 
-	if err := database.WriteBackup(); err != nil {
+	_, err = database.WriteBackup()
+	if err != nil {
 		logger.Error().Err(err).Msg("Backup failed")
 	} else {
 		logger.Info().Msg("Backup completed")
