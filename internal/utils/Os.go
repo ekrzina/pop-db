@@ -1,9 +1,16 @@
 package utils
 
-import "io/fs"
+import (
+	"io"
+	"io/fs"
+	"os"
+)
 
 type OS interface {
-	ReadFile(name string) ([]byte, error)
-	WriteFile(name string, data []byte, perm fs.FileMode) error
-	Open(name string) (fs.File, error)
+	ReadFile(string) ([]byte, error)
+	WriteFile(string, []byte, fs.FileMode) error
+	Open(string) (fs.File, error)
+	Create(string) (*os.File, error)
+	Copy(io.Writer, io.Reader) (int64, error)
+	Stat(string) (os.FileInfo, error)
 }

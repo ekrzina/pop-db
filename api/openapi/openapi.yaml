@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: Population Database API
+  version: 1.1.0
+  description: API for managing persons and database backups.
+tags:
+  - name: Person Repository
+    description: Operations related to persons
+  - name: DB Management
+    description: Database backup and maintenance operations
+paths:
+  /api/v1/persons:
+    get:
+      tags: [Person Repository]
+      summary: Get all persons
+      responses:
+        '200':
+          description: List of persons.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Person'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Person Repository]
+      summary: Delete all persons
+      description: Deletes all persons and cascades to related medical data.
+      responses:
+        '200':
+          description: Deletion summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteAllResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/persons/summary:
+    get:
+      tags: [Person Repository]
+      summary: Get all person IDs, names and surnames
+      responses:
+        '200':
+          description: List of person summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonSummary'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/persons/{id}:
+    get:
+      tags: [Person Repository]
+      summary: Get person by ID
+      parameters:
+        - $ref: '#/components/parameters/personId'
+      responses:
+        '200':
+          description: Full person details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags: [Person Repository]
+      summary: Update person by ID
+      parameters:
+        - $ref: '#/components/parameters/personId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Person'
+      responses:
+        '200':
+          description: Updated person.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    delete:
+      tags: [Person Repository]
+      summary: Delete person by ID
+      parameters:
+        - $ref: '#/components/parameters/personId'
+      responses:
+        '200':
+          description: Deletion confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/backups:
+    post:
+      tags: [DB Management]
+      summary: Create database backup
+      responses:
+        '201':
+          description: Backup created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Backup'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [DB Management]
+      summary: List backups
+      responses:
+        '200':
+          description: List of backups.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Backup'
+  /api/v1/backups/{filename}:
+    delete:
+      tags: [DB Management]
+      summary: Delete backup by filename
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Backup deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/backups/{filename}/restore:
+    post:
+      tags: [DB Management]
+      summary: Restore database from backup
+      description: Restores the active database file from the specified backup file.
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: The backup filename to restore from.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Database successfully restored from backup.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  parameters:
+    personId:
+      name: id
+      in: path
+      description: Person identification number.
+      required: true
+      schema:
+        type: integer
+  responses:
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - status
+        - timestamp
+      properties:
+        error:
+          type: string
+          example: validationError
+        message:
+          type: string
+          example: "height must be between 30 and 300 cm"
+        status:
+          type: integer
+          example: 400
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-26T18:25:43Z"
+    DeleteResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Resource deleted successfully.
+    DeleteAllResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: All persons deleted.
+        deletedCount:
+          type: integer
+          example: 42
+    Person:
+      type: object
+      description: Represents a person stored in the population database.
+      required:
+        - id
+        - name
+        - surname
+        - dateOfBirth
+        - nationality
+        - city
+      properties:
+        id:
+          type: integer
+          example: 1
+          description: The identification number of a person.
+        name:
+          type: string
+          example: "Arthur"
+          description: The full first name of the person.
+        surname:
+          type: string
+          example: "Dent"
+          description: The full last name of the person.
+        occupation:
+          type: string
+          example: "Sandwich maker"
+          description: The person's occupation.
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1978-03-11"
+          description: The birth date of the person in ISO format (YYYY-MM-DD).
+        nationality:
+          type: string
+          example: "British"
+          description: The person's nationality.
+        city:
+          type: string
+          example: "London"
+          description: The city or county where the person lives.
+        notes:
+          type: string
+          example: "Mostly harmless."
+          description: Additional notes about the person.
+        medical:
+          $ref: '#/components/schemas/MedicalData'
+    PersonSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: "The identification number of a person."
+          required: true
+          example: "1"
+        name:
+          type: string
+          description: "The full first name of the person."
+          required: true
+          example: "Arthur"
+        surname:
+          type: string
+          description: "The full last name of the person."
+          required: true
+          example: "Dent"
+    MedicalData:
+      type: object
+      required:
+        - height
+        - weight
+        - bloodType
+      properties:
+        height:
+          type: number
+          format: float
+          example: 178.0
+          minimum: 30
+          maximum: 250
+          description: The height of the person in centimeters.
+        weight:
+          type: number
+          format: float
+          example: 75.0
+          minimum: 10
+          maximum: 400
+          description: The weight of the person in kilograms.
+        bloodType:
+            type: string
+            enum:
+              - A+
+              - B+
+              - AB+
+              - O+
+              - A-
+              - B-
+              - AB-
+              - O-
+            example: O+
+            description: "The blood type of the person."
+        medicalConditions:
+          type: string
+          example: "Existential confusion."
+          description: Additional medical information and known conditions.
+Backup:
+  type: object
+  required:
+    - filename
+    - path
+    - createdAt
+    - sizeBytes
+  properties:
+    filename:
+      type: string
+      example: "population.db_20260225_225013.bak"
+      description: "The filename of the created database backup."
+    path:
+      type: string
+      example: "/datafs/user/population.db_20260225_225013.bak"
+      description: "The full file path of the database backup."
+    createdAt:
+      type: string
+      format: date-time
+      example: "2026-02-25T22:50:13Z"
+      description: "The date and time of the backup creation."
+    sizeBytes:
+      type: integer
+      example: 184320
+      description: "Database backup file size in bytes."
+  RestoreResponse:
+     type: object
+     required:
+       - message
+       - restoredFrom
+     properties:
+       message:
+         type: string
+         example: Database restored successfully.
+       restoredFrom:
+         type: string
+         example: population.db_20260225_225013.bak
+         description: The filename of the backup used for restoration.
