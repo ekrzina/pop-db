@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
-	"pop-db/internal/utils"
 	"time"
 
+	"github.com/haoli/pop-db/internal/utils"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
@@ -34,7 +34,7 @@ type DbManager struct {
 	cfg    *viper.Viper
 	config *DbSetup
 	logger *zerolog.Logger
-	db     *sql.DB
+	DB     utils.DB
 	OS     utils.OS
 }
 
@@ -81,10 +81,10 @@ func (s *DbManager) migrate() error {
 		medical_conditions TEXT,
 		FOREIGN KEY(person_id) REFERENCES person(id) ON DELETE CASCADE
 	);`
-	if _, err := s.db.Exec(personTable); err != nil {
+	if _, err := s.DB.Execute(personTable); err != nil {
 		return err
 	}
-	if _, err := s.db.Exec(medicalTable); err != nil {
+	if _, err := s.DB.Execute(medicalTable); err != nil {
 		return err
 	}
 	return nil
@@ -195,56 +195,6 @@ func (s *DbManager) RestoreBackup(filename string) error {
 	return nil
 }
 
-// Begin is a wrapper method for sql.DB's Begin method for transaction support.
-// Returns:
-//   - *sql.Tx - Tx object for transaction support.
-//   - error - Error on transaction beginning setup failure.
-func (s *DbManager) Begin() (*sql.Tx, error) {
-	return s.db.Begin()
-}
-
-// Execute is a wrapper method of sql.DB's Exec method. A query is executed without returning any rows. Uses background context.
-// Parameters:
-//   - query: SQL query for database object to execute.
-//   - args: Arguments are used for placeholder parameters in the query.
-//
-// Returns:
-//   - sql.Result: The result of the SQL query.
-//   - error: An error is returned on query failure.
-func (s *DbManager) Execute(query string, args ...any) (sql.Result, error) {
-	return s.db.Exec(query, args...)
-}
-
-// Query is a wrapper method of sql.DB's Query method. A query that returns rows is executed. Uses background context.
-// Parameters:
-//   - query: SQL query for database object to execute.
-//   - args: Arguments are used for placeholder parameters in the query.
-//
-// Returns:
-//   - sql.Rows: The result rows of the SQL query.
-//   - error: An error is returned on query failure.
-func (s *DbManager) Query(query string, args ...any) (*sql.Rows, error) {
-	return s.db.Query(query, args...)
-}
-
-// QueryRow is a wrapper method of sql.DB's QueryRow method. A query that returns a row is executed. Uses background context.
-// Parameters:
-//   - query: SQL query for database object to execute.
-//   - args: Arguments are used for placeholder parameters in the query.
-//
-// Returns:
-//   - sql.Rows: The result row of the SQL query.
-func (s *DbManager) QueryRow(query string, args ...any) *sql.Row {
-	return s.db.QueryRow(query, args...)
-}
-
-// Close is a wrapper for sql.DB's Close method. Closes the database connection.
-// Returns:
-// - error: Error on closing failure.
-func (s *DbManager) Close() error {
-	return s.db.Close()
-}
-
 // NewDbManager is a database constructor function.
 // Parameters:
 //   - v: Viper configuration file for database configuration.
@@ -278,7 +228,7 @@ func NewDbManager(v *viper.Viper, logger zerolog.Logger) (*DbManager, error) {
 		cfg:    v,
 		config: &cfg,
 		logger: &logger,
-		db:     dbase,
+		DB:     &utils.RealDB{DB: dbase},
 		OS:     &utils.RealOS{},
 	}
 	// Check if database should auto migrate

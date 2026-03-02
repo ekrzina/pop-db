@@ -7,10 +7,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"pop-db/test/mocks"
 	"testing"
 	"time"
 
+	"github.com/haoli/pop-db/test/mocks"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +48,7 @@ func setupTestDB(t *testing.T, autoMigrate bool) *DbManager {
 
 	t.Cleanup(func() {
 		defer func() {
-			if err := manager.Close(); err != nil {
+			if err := manager.DB.Close(); err != nil {
 				logger.Error().Err(err).Msg("Failed to close manager")
 			}
 		}()
@@ -72,7 +72,7 @@ func TestNewDbManager(t *testing.T) {
 		manager, err := NewDbManager(viper, logger)
 		assert.NoError(t, err)
 		assert.NotNil(t, manager)
-		assert.NotNil(t, manager.db)
+		assert.NotNil(t, manager.DB)
 
 		// Check that DB file exists
 		dbFile := filepath.Join(tmpDir, "test.db")
@@ -80,7 +80,7 @@ func TestNewDbManager(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify tables were created
-		rows, err := manager.db.Query(`
+		rows, err := manager.DB.Query(`
 			SELECT name FROM sqlite_master 
 			WHERE type='table' AND name IN ('person','medical_data');
 		`)
@@ -91,7 +91,7 @@ func TestNewDbManager(t *testing.T) {
 			count++
 		}
 		assert.Equal(t, 2, count)
-		assert.NoError(t, manager.Close())
+		assert.NoError(t, manager.DB.Close())
 	})
 	t.Run("no automigrate does not create tables", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -107,13 +107,13 @@ func TestNewDbManager(t *testing.T) {
 		manager, err := NewDbManager(v, logger)
 		assert.NoError(t, err)
 
-		rows, err := manager.db.Query(`
+		rows, err := manager.DB.Query(`
 		SELECT name FROM sqlite_master 
 		WHERE type='table' AND name='person';
 	`)
 		assert.NoError(t, err)
 		assert.False(t, rows.Next())
-		assert.NoError(t, manager.Close())
+		assert.NoError(t, manager.DB.Close())
 	})
 	t.Run("fails if config missing", func(t *testing.T) {
 		v := viper.New() // empty config
@@ -172,7 +172,7 @@ func TestMigrate(t *testing.T) {
 		err := manager.migrate()
 		assert.NoError(t, err)
 
-		rows, err := manager.db.Query(`
+		rows, err := manager.DB.Query(`
 			SELECT name FROM sqlite_master 
 			WHERE type='table' AND name IN ('person','medical_data');
 		`)
@@ -190,14 +190,14 @@ func TestExecuteAndQueryWrappers(t *testing.T) {
 	manager := setupTestDB(t, true)
 
 	t.Run("success on insert and query person", func(t *testing.T) {
-		_, err := manager.Execute(`
+		_, err := manager.DB.Execute(`
 			INSERT INTO person (name, surname, nationality, city)
 			VALUES (?, ?, ?, ?)`,
 			"Arthur", "Dent", "British", "London",
 		)
 		assert.NoError(t, err)
 
-		rows, err := manager.Query(`
+		rows, err := manager.DB.Query(`
 			SELECT name FROM person WHERE surname = ?`,
 			"Dent",
 		)
@@ -211,7 +211,7 @@ func TestExecuteAndQueryWrappers(t *testing.T) {
 	})
 
 	t.Run("success on queryrow", func(t *testing.T) {
-		row := manager.QueryRow(`
+		row := manager.DB.QueryRow(`
 			SELECT COUNT(*) FROM person`,
 		)
 
@@ -226,7 +226,7 @@ func TestBeginTransaction(t *testing.T) {
 	manager := setupTestDB(t, true)
 
 	t.Run("success on commit transaction", func(t *testing.T) {
-		tx, err := manager.Begin()
+		tx, err := manager.DB.Begin()
 		assert.NoError(t, err)
 
 		_, err = tx.Exec(`
@@ -238,7 +238,7 @@ func TestBeginTransaction(t *testing.T) {
 
 		assert.NoError(t, tx.Commit())
 
-		row := manager.QueryRow(`SELECT COUNT(*) FROM person`)
+		row := manager.DB.QueryRow(`SELECT COUNT(*) FROM person`)
 		var count int
 		assert.NoError(t, row.Scan(&count))
 		assert.Equal(t, 1, count)
@@ -248,11 +248,11 @@ func TestBeginTransaction(t *testing.T) {
 func TestClose(t *testing.T) {
 	manager := setupTestDB(t, true)
 
-	err := manager.Close()
+	err := manager.DB.Close()
 	assert.NoError(t, err)
 
 	// Further usage should fail
-	_, err = manager.Execute("SELECT 1")
+	_, err = manager.DB.Execute("SELECT 1")
 	assert.Error(t, err)
 }
 
