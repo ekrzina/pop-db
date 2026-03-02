@@ -64,6 +64,16 @@ func (r *RealOS) Stat(name string) (os.FileInfo, error) {
 	return os.Stat(name)
 }
 
+// Copy is a os.IsNotExist method wrapper
+// Parameters:
+//   - err: Error to check if OS directory exists.
+//
+// Returns:
+//   - bool: Indication of weather file exists.
+func (r *RealOS) IsNotExist(err error) bool {
+	return os.IsNotExist(err)
+}
+
 // Copy is a io.Copy method wrapper
 // Parameters:
 //   - dst: Writer interface that writes bytes to an underlying data stream.
