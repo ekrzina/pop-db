@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"path/filepath"
 	"pop-db/internal/utils"
 	"time"
@@ -22,6 +21,14 @@ type DbSetup struct {
 	ForeignKeys bool   `mapstructure:"foreignKeys"`
 }
 
+// BackupMetadata represents additional information on created backup
+type BackupMetadata struct {
+	Filename  string
+	Path      string
+	CreatedAt time.Time
+	SizeBytes int64
+}
+
 // DbManager structure represents struct to contain database configuration and object
 type DbManager struct {
 	cfg    *viper.Viper
@@ -31,12 +38,20 @@ type DbManager struct {
 	OS     utils.OS
 }
 
-// BackupMetadata represents additional information on created backup
-type BackupMetadata struct {
-	Filename  string
-	Path      string
-	CreatedAt time.Time
-	SizeBytes int64
+// Validate performs non-empty checks on configuration parameters
+// Returns:
+//   - error: Returned on empty paths in configuration
+func (c *DbSetup) Validate() error {
+	if c.Path == "" {
+		return fmt.Errorf("database.path is required")
+	}
+	if c.Name == "" {
+		return fmt.Errorf("database.name is required")
+	}
+	if c.BackupPath == "" {
+		return fmt.Errorf("database.backupPath is required")
+	}
+	return nil
 }
 
 // migrate creates personal identification and medical table if tables do not already exist.
@@ -126,7 +141,7 @@ func (s *DbManager) WriteBackup() (*BackupMetadata, error) {
 //   - error: Error if stating file fails
 func (s *DbManager) validateBackup(backupPath string) error {
 	if _, err := s.OS.Stat(backupPath); err != nil {
-		if os.IsNotExist(err) {
+		if s.OS.IsNotExist(err) {
 			return fmt.Errorf("backup not found")
 		}
 		return err
@@ -181,7 +196,7 @@ func (s *DbManager) Begin() (*sql.Tx, error) {
 //   - sql.Result: The result of the SQL query.
 //   - error: An error is returned on query failure.
 func (s *DbManager) Execute(query string, args ...any) (sql.Result, error) {
-	return s.db.Exec(query, args)
+	return s.db.Exec(query, args...)
 }
 
 // Query is a wrapper method of sql.DB's Query method. A query that returns rows is executed. Uses background context.
@@ -214,7 +229,7 @@ func (s *DbManager) Close() error {
 	return s.db.Close()
 }
 
-// NewSQLiteDB is a database constructor function.
+// NewDbManager is a database constructor function.
 // Parameters:
 //   - v: Viper configuration file for database configuration.
 //   - logger: zerolog.Logger object for logging formatting.
@@ -222,9 +237,12 @@ func (s *DbManager) Close() error {
 // Returns:
 //   - sql.DB: SQL database structure.
 //   - error: Returned on unsuccessful database creation.
-func NewSQLiteDB(v *viper.Viper, logger zerolog.Logger) (*DbManager, error) {
+func NewDbManager(v *viper.Viper, logger zerolog.Logger) (*DbManager, error) {
 	var cfg DbSetup
 	if err := v.UnmarshalKey("database", &cfg); err != nil {
+		return nil, err
+	}
+	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	fullPath := filepath.Join(cfg.Path, cfg.Name)

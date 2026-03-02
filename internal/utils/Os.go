@@ -13,4 +13,5 @@ type OS interface {
 	Create(string) (*os.File, error)
 	Copy(io.Writer, io.Reader) (int64, error)
 	Stat(string) (os.FileInfo, error)
+	IsNotExist(error) bool
 }

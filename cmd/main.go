@@ -62,7 +62,7 @@ func main() {
 	os.MkdirAll(v.GetString("database.path"), os.ModePerm)
 	os.MkdirAll(v.GetString("database.backupPath"), os.ModePerm)
 
-	database, err := db.NewSQLiteDB(v, logger)
+	database, err := db.NewDbManager(v, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize database")
 	}
