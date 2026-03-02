@@ -112,13 +112,21 @@ func (s *DbManager) WriteBackup() (*BackupMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer sourceFile.Close()
+	defer func() {
+		if err := sourceFile.Close(); err != nil {
+			s.logger.Error().Err(err).Msg("Failed to close source file")
+		}
+	}()
 	// Create destination file and defer closing
 	destFile, err := s.OS.Create(destPath)
 	if err != nil {
 		return nil, err
 	}
-	defer destFile.Close()
+	defer func() {
+		if err := destFile.Close(); err != nil {
+			s.logger.Error().Err(err).Msg("Failed to close destination file")
+		}
+	}()
 	// Stream copy of source file to destination file
 	size, err := s.OS.Copy(destFile, sourceFile)
 	if err != nil {
@@ -165,13 +173,21 @@ func (s *DbManager) RestoreBackup(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			s.logger.Error().Err(err).Msg("Failed to close source file")
+		}
+	}()
 	// Create/overwrite active database file
 	dst, err := s.OS.Create(filepath.Join(s.config.Path + s.config.Name))
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	defer func() {
+		if err := dst.Close(); err != nil {
+			s.logger.Error().Err(err).Msg("Failed to close destination file")
+		}
+	}()
 	// Copy contents
 	if _, err := s.OS.Copy(dst, src); err != nil {
 		return err

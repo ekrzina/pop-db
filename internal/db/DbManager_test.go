@@ -47,7 +47,11 @@ func setupTestDB(t *testing.T, autoMigrate bool) *DbManager {
 	}
 
 	t.Cleanup(func() {
-		manager.Close()
+		defer func() {
+			if err := manager.Close(); err != nil {
+				logger.Error().Err(err).Msg("Failed to close manager")
+			}
+		}()
 	})
 
 	return manager
