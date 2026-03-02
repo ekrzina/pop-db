@@ -6,13 +6,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/haoli/pop-db/internal/db"
+	"github.com/haoli/pop-db/internal/repository"
+	"github.com/haoli/pop-db/internal/repository/models"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-
-	"pop-db/internal/db"
-	"pop-db/internal/repository"
-	"pop-db/internal/repository/models"
 )
 
 //go:embed configs/config.yaml
@@ -66,17 +65,17 @@ func main() {
 		logger.Fatal().Err(err).Msg("Failed to create database backup path")
 	}
 
-	database, err := db.NewDbManager(v, logger)
+	manager, err := db.NewDbManager(v, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize database")
 	}
 	defer func() {
-		if cerr := database.Close(); cerr != nil {
+		if cerr := manager.DB.Close(); cerr != nil {
 			logger.Error().Err(cerr).Msg("Failed to close database")
 		}
 	}()
 
-	repo := repository.NewPersonRepository(database, &logger)
+	repo := repository.NewPersonRepository(manager, &logger)
 
 	// Example data
 	person := &models.Person{
@@ -109,7 +108,7 @@ func main() {
 
 	logger.Info().Interface("person", fullPerson).Msg("Fetched person")
 
-	_, err = database.WriteBackup()
+	_, err = manager.WriteBackup()
 	if err != nil {
 		logger.Error().Err(err).Msg("Backup failed")
 	} else {

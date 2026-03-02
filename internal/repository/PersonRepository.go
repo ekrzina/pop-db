@@ -2,16 +2,16 @@ package repository
 
 import (
 	"database/sql"
-	"pop-db/internal/db"
-	"pop-db/internal/repository/models"
 
+	"github.com/haoli/pop-db/internal/db"
+	"github.com/haoli/pop-db/internal/repository/models"
 	"github.com/rs/zerolog"
 )
 
 // PersonRepository stores database object for access to SQL database
 type PersonRepository struct {
-	db     *db.DbManager
-	logger *zerolog.Logger
+	manager *db.DbManager
+	logger  *zerolog.Logger
 }
 
 // safeRollback safely executes the rollback function on transaction fail
@@ -31,7 +31,7 @@ func (r *PersonRepository) safeRollback(tx *sql.Tx) {
 //   - int64: Last inserted person ID (auto-incremented).
 //   - error: Error on insertion fail.
 func (r *PersonRepository) CreatePerson(p *models.Person) (int64, error) {
-	result, err := r.db.Execute(`
+	result, err := r.manager.DB.Execute(`
 		INSERT INTO person (name, surname, occupation, date_of_birth, nationality, city, notes, picture)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.Name,
@@ -57,7 +57,7 @@ func (r *PersonRepository) CreatePerson(p *models.Person) (int64, error) {
 //   - *models.Person: Person information fetched from database if ID matches.
 //   - error: Error on search fail.
 func (r *PersonRepository) GetPersonByID(id int64) (*models.Person, error) {
-	row := r.db.QueryRow(`
+	row := r.manager.DB.QueryRow(`
 		SELECT id, name, surname, occupation, date_of_birth, nationality, city, notes, picture
 		FROM person WHERE id = ?`, id)
 	var p models.Person
@@ -83,7 +83,7 @@ func (r *PersonRepository) GetPersonByID(id int64) (*models.Person, error) {
 //   - []models.Person: List of all Person information fetched from database.
 //   - error: Error on query fail.
 func (r *PersonRepository) ListPersons() ([]models.Person, error) {
-	rows, err := r.db.Query(`
+	rows, err := r.manager.DB.Query(`
 		SELECT id, name, surname FROM person`)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func (r *PersonRepository) ListPersons() ([]models.Person, error) {
 //
 //	error: Error on query fail.
 func (r *PersonRepository) DeletePerson(id int64) error {
-	_, err := r.db.Execute(`DELETE FROM person WHERE id = ?`, id)
+	_, err := r.manager.DB.Execute(`DELETE FROM person WHERE id = ?`, id)
 	return err
 }
 
@@ -125,7 +125,7 @@ func (r *PersonRepository) DeletePerson(id int64) error {
 //
 //	error: Error on query fail.
 func (r *PersonRepository) UpdatePerson(p *models.Person) error {
-	_, err := r.db.Execute(`
+	_, err := r.manager.DB.Execute(`
 		UPDATE person
 		SET name = ?, surname = ?, occupation = ?, date_of_birth = ?, nationality = ?, city = ?, notes = ?, picture = ?
 		WHERE id = ?`,
@@ -149,7 +149,7 @@ func (r *PersonRepository) UpdatePerson(p *models.Person) error {
 // Returns:
 //   - error: Error on insertion fail.
 func (r *PersonRepository) CreateMedicalData(m *models.MedicalData) error {
-	_, err := r.db.Execute(`
+	_, err := r.manager.DB.Execute(`
 		INSERT INTO medical_data (person_id, height, weight, blood_type, medical_conditions)
 		VALUES (?, ?, ?, ?, ?)`,
 		m.PersonID,
@@ -168,7 +168,7 @@ func (r *PersonRepository) CreateMedicalData(m *models.MedicalData) error {
 // Returns:
 //   - error: Error on insertion fail.
 func (r *PersonRepository) GetPersonWithMedicalData(id int64) (*models.Person, error) {
-	row := r.db.QueryRow(`
+	row := r.manager.DB.QueryRow(`
 		SELECT p.id, p.name, p.surname, p.occupation, p.date_of_birth, p.nationality, p.city, p.notes, p.picture,
 		       m.height, m.weight, m.blood_type, m.medical_conditions
 		FROM person p
@@ -214,7 +214,7 @@ func (r *PersonRepository) CreateFullPerson(
 	p *models.Person,
 	m *models.MedicalData,
 ) (int64, error) {
-	tx, err := r.db.Begin()
+	tx, err := r.manager.DB.Begin()
 	if err != nil {
 		return 0, err
 	}
@@ -267,9 +267,9 @@ func (r *PersonRepository) CreateFullPerson(
 //
 // Returns:
 //   - *PersonRepository: Person repository to manage persons with.
-func NewPersonRepository(db *db.DbManager, logger *zerolog.Logger) *PersonRepository {
+func NewPersonRepository(manager *db.DbManager, logger *zerolog.Logger) *PersonRepository {
 	return &PersonRepository{
-		db:     db,
-		logger: logger,
+		manager: manager,
+		logger:  logger,
 	}
 }

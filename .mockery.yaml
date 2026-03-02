@@ -1,11 +1,11 @@
-all: false
 log-level: info
 
 packages:
-  pop-db/internal/utils: 
+  github.com/haoli/pop-db/internal/utils:
     config:
       dir: test/mocks
-      filename: mockOs.go
       pkgname: mocks
+      filename: MockUtils.go
     interfaces:
-      OS:
+      OS: {}
+      DB: {}
