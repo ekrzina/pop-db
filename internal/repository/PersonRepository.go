@@ -1,13 +1,26 @@
 package repository
 
 import (
+	"database/sql"
 	"pop-db/internal/db"
 	"pop-db/internal/repository/models"
+
+	"github.com/rs/zerolog"
 )
 
 // PersonRepository stores database object for access to SQL database
 type PersonRepository struct {
-	db *db.DbManager
+	db     *db.DbManager
+	logger *zerolog.Logger
+}
+
+// safeRollback safely executes the rollback function on transaction fail
+// Parameters:
+//   - tx: SQL TX data.
+func (r *PersonRepository) safeRollback(tx *sql.Tx) {
+	if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+		r.logger.Error().Err(err).Msg("Rollback failed")
+	}
 }
 
 // CreatePerson creates a single person and adds it to database file
@@ -75,7 +88,11 @@ func (r *PersonRepository) ListPersons() ([]models.Person, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			r.logger.Error().Err(err).Msg("Failed to close rows")
+		}
+	}()
 	// Scan all persons from database and append each to list
 	var persons []models.Person
 	for rows.Next() {
@@ -214,12 +231,12 @@ func (r *PersonRepository) CreateFullPerson(
 		p.Picture,
 	)
 	if err != nil {
-		tx.Rollback()
+		r.safeRollback(tx)
 		return 0, err
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		tx.Rollback()
+		r.safeRollback(tx)
 		return 0, err
 	}
 	if m != nil {
@@ -233,7 +250,7 @@ func (r *PersonRepository) CreateFullPerson(
 			m.MedicalConditions,
 		)
 		if err != nil {
-			tx.Rollback()
+			r.safeRollback(tx)
 			return 0, err
 		}
 	}
@@ -244,6 +261,15 @@ func (r *PersonRepository) CreateFullPerson(
 }
 
 // NewPersonRepository returns PersonRepository object
-func NewPersonRepository(db *db.DbManager) *PersonRepository {
-	return &PersonRepository{db: db}
+// Parameters:
+//   - db: Database manager for person repository.
+//   - logger: Zerolog logger for person repository.
+//
+// Returns:
+//   - *PersonRepository: Person repository to manage persons with.
+func NewPersonRepository(db *db.DbManager, logger *zerolog.Logger) *PersonRepository {
+	return &PersonRepository{
+		db:     db,
+		logger: logger,
+	}
 }

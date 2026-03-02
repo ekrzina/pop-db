@@ -59,16 +59,24 @@ func main() {
 	}
 
 	// Ensure directories exist
-	os.MkdirAll(v.GetString("database.path"), os.ModePerm)
-	os.MkdirAll(v.GetString("database.backupPath"), os.ModePerm)
+	if err := os.MkdirAll(v.GetString("database.path"), os.ModePerm); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create database path")
+	}
+	if err := os.MkdirAll(v.GetString("database.backupPath"), os.ModePerm); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create database backup path")
+	}
 
 	database, err := db.NewDbManager(v, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize database")
 	}
-	defer database.Close()
+	defer func() {
+		if cerr := database.Close(); cerr != nil {
+			logger.Error().Err(cerr).Msg("Failed to close database")
+		}
+	}()
 
-	repo := repository.NewPersonRepository(database)
+	repo := repository.NewPersonRepository(database, &logger)
 
 	// Example data
 	person := &models.Person{
