@@ -567,6 +567,63 @@ func (_c *MockOS_IsNotExist_Call) RunAndReturn(run func(err error) bool) *MockOS
 	return _c
 }
 
+// MkdirAll provides a mock function for the type MockOS
+func (_mock *MockOS) MkdirAll(s string, fileMode fs.FileMode) error {
+	ret := _mock.Called(s, fileMode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MkdirAll")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, fs.FileMode) error); ok {
+		r0 = returnFunc(s, fileMode)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockOS_MkdirAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MkdirAll'
+type MockOS_MkdirAll_Call struct {
+	*mock.Call
+}
+
+// MkdirAll is a helper method to define mock.On call
+//   - s string
+//   - fileMode fs.FileMode
+func (_e *MockOS_Expecter) MkdirAll(s interface{}, fileMode interface{}) *MockOS_MkdirAll_Call {
+	return &MockOS_MkdirAll_Call{Call: _e.mock.On("MkdirAll", s, fileMode)}
+}
+
+func (_c *MockOS_MkdirAll_Call) Run(run func(s string, fileMode fs.FileMode)) *MockOS_MkdirAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 fs.FileMode
+		if args[1] != nil {
+			arg1 = args[1].(fs.FileMode)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOS_MkdirAll_Call) Return(err error) *MockOS_MkdirAll_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockOS_MkdirAll_Call) RunAndReturn(run func(s string, fileMode fs.FileMode) error) *MockOS_MkdirAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Open provides a mock function for the type MockOS
 func (_mock *MockOS) Open(s string) (fs.File, error) {
 	ret := _mock.Called(s)
@@ -629,6 +686,68 @@ func (_c *MockOS_Open_Call) RunAndReturn(run func(s string) (fs.File, error)) *M
 	return _c
 }
 
+// ReadDir provides a mock function for the type MockOS
+func (_mock *MockOS) ReadDir(name string) ([]os.DirEntry, error) {
+	ret := _mock.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadDir")
+	}
+
+	var r0 []os.DirEntry
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]os.DirEntry, error)); ok {
+		return returnFunc(name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []os.DirEntry); ok {
+		r0 = returnFunc(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]os.DirEntry)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockOS_ReadDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadDir'
+type MockOS_ReadDir_Call struct {
+	*mock.Call
+}
+
+// ReadDir is a helper method to define mock.On call
+//   - name string
+func (_e *MockOS_Expecter) ReadDir(name interface{}) *MockOS_ReadDir_Call {
+	return &MockOS_ReadDir_Call{Call: _e.mock.On("ReadDir", name)}
+}
+
+func (_c *MockOS_ReadDir_Call) Run(run func(name string)) *MockOS_ReadDir_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOS_ReadDir_Call) Return(vs []os.DirEntry, err error) *MockOS_ReadDir_Call {
+	_c.Call.Return(vs, err)
+	return _c
+}
+
+func (_c *MockOS_ReadDir_Call) RunAndReturn(run func(name string) ([]os.DirEntry, error)) *MockOS_ReadDir_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadFile provides a mock function for the type MockOS
 func (_mock *MockOS) ReadFile(s string) ([]byte, error) {
 	ret := _mock.Called(s)
@@ -687,6 +806,57 @@ func (_c *MockOS_ReadFile_Call) Return(bytes []byte, err error) *MockOS_ReadFile
 }
 
 func (_c *MockOS_ReadFile_Call) RunAndReturn(run func(s string) ([]byte, error)) *MockOS_ReadFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Remove provides a mock function for the type MockOS
+func (_mock *MockOS) Remove(s string) error {
+	ret := _mock.Called(s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Remove")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string) error); ok {
+		r0 = returnFunc(s)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockOS_Remove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Remove'
+type MockOS_Remove_Call struct {
+	*mock.Call
+}
+
+// Remove is a helper method to define mock.On call
+//   - s string
+func (_e *MockOS_Expecter) Remove(s interface{}) *MockOS_Remove_Call {
+	return &MockOS_Remove_Call{Call: _e.mock.On("Remove", s)}
+}
+
+func (_c *MockOS_Remove_Call) Run(run func(s string)) *MockOS_Remove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOS_Remove_Call) Return(err error) *MockOS_Remove_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockOS_Remove_Call) RunAndReturn(run func(s string) error) *MockOS_Remove_Call {
 	_c.Call.Return(run)
 	return _c
 }

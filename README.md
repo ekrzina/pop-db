@@ -49,9 +49,21 @@ export CGO_ENABLED=1
 
 ### Build and Run
 
+The openapi code is generated using:
+
+```bash
+go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest --config api/server/server.cfg.yaml api/openapi/openapi.yaml
+```
+
 To build the application, run the code below.
 
 ```bash
 mkdir bin && cd bin
-go build -o popdb ../cmd/
+go build -o pop-db ../cmd/
+```
+
+To run the application (on `http://localhost:8080/swagger/`), run the following code:
+
+```bash
+./pop-db
 ```
