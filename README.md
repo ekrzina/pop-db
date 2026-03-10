@@ -1,7 +1,5 @@
 # PopDB
 
-[TOC]
-
 ## Introduction
 
 PopDB is a lightweight, personal-use database project designed to manage and display population census data through a dynamic web application. The project integrates a relational SQL database with a streamlined frontend and backend architecture.
