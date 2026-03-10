@@ -1,4 +1,4 @@
-package db
+package dbman
 
 import (
 	"errors"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/haoli/pop-db/test/mocks"
+
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -30,12 +31,13 @@ func (f *fakeFile) Stat() (fs.FileInfo, error) { return nil, nil }
 func setupTestDB(t *testing.T, autoMigrate bool) *DbManager {
 	t.Helper()
 
-	tmpDir := t.TempDir()
+	dbDir := t.TempDir()
+	backupDir := t.TempDir()
 
 	v := viper.New()
-	v.Set("database.path", tmpDir)
+	v.Set("database.path", dbDir)
 	v.Set("database.name", "test.db")
-	v.Set("database.backupPath", tmpDir)
+	v.Set("database.backupPath", backupDir)
 	v.Set("database.autoMigrate", autoMigrate)
 	v.Set("database.foreignKeys", true)
 
@@ -47,11 +49,9 @@ func setupTestDB(t *testing.T, autoMigrate bool) *DbManager {
 	}
 
 	t.Cleanup(func() {
-		defer func() {
-			if err := manager.DB.Close(); err != nil {
-				logger.Error().Err(err).Msg("Failed to close manager")
-			}
-		}()
+		if err := manager.DB.Close(); err != nil {
+			logger.Error().Err(err).Msg("Failed to close manager")
+		}
 	})
 
 	return manager
@@ -132,7 +132,7 @@ func TestDbSetupValidate(t *testing.T) {
 			Name:       "db.sqlite",
 			BackupPath: "/backup",
 		}
-		assert.NoError(t, cfg.Validate())
+		assert.NoError(t, cfg.validate())
 	})
 
 	t.Run("fail on missing path", func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestDbSetupValidate(t *testing.T) {
 			Name:       "db.sqlite",
 			BackupPath: "/backup",
 		}
-		err := cfg.Validate()
+		err := cfg.validate()
 		assert.Error(t, err)
 		assert.Equal(t, "database.path is required", err.Error())
 	})
@@ -150,7 +150,7 @@ func TestDbSetupValidate(t *testing.T) {
 			Path:       "/tmp",
 			BackupPath: "/backup",
 		}
-		err := cfg.Validate()
+		err := cfg.validate()
 		assert.Error(t, err)
 		assert.Equal(t, "database.name is required", err.Error())
 	})
@@ -160,7 +160,7 @@ func TestDbSetupValidate(t *testing.T) {
 			Path: "/tmp",
 			Name: "db.sqlite",
 		}
-		err := cfg.Validate()
+		err := cfg.validate()
 		assert.Error(t, err)
 		assert.Equal(t, "database.backupPath is required", err.Error())
 	})
@@ -279,16 +279,16 @@ func TestValidateBackup(t *testing.T) {
 		err := os.WriteFile(tmpFile, []byte("data"), 0644)
 		assert.NoError(t, err)
 
-		err = manager.validateBackup(tmpFile)
+		err = manager.validatePath(tmpFile)
 		assert.NoError(t, err)
 	})
 
 	t.Run("fail on not found", func(t *testing.T) {
 		manager := setupTestDB(t, true)
 
-		err := manager.validateBackup("does_not_exist.bak")
+		err := manager.validatePath("does_not_exist.bak")
 		assert.Error(t, err)
-		assert.Equal(t, "backup not found", err.Error())
+		assert.Equal(t, "path does not exist: does_not_exist.bak", err.Error())
 	})
 }
 
@@ -460,7 +460,7 @@ func TestRestoreBackup(t *testing.T) {
 		mockOS := mocks.NewMockOS(t)
 
 		backupPath := filepath.Join(manager.config.BackupPath, "backup.bak")
-		destPath := filepath.Join(manager.config.Path + manager.config.Name)
+		destPath := filepath.Join(manager.config.Path, manager.config.Name)
 
 		fakeSrc := newFakeFile()
 
@@ -486,7 +486,7 @@ func TestRestoreBackup(t *testing.T) {
 		mockOS := mocks.NewMockOS(t)
 
 		backupPath := filepath.Join(manager.config.BackupPath, "backup.bak")
-		destPath := filepath.Join(manager.config.Path + manager.config.Name)
+		destPath := filepath.Join(manager.config.Path, manager.config.Name)
 
 		fakeSrc := newFakeFile()
 		dstFile, _ := os.CreateTemp(t.TempDir(), "active")
@@ -512,5 +512,72 @@ func TestRestoreBackup(t *testing.T) {
 		err := manager.RestoreBackup("backup.bak")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "copy failed")
+	})
+}
+
+func TestDeleteBackup(t *testing.T) {
+	t.Run("rejects path traversal", func(t *testing.T) {
+		manager := setupTestDB(t, true)
+
+		err := manager.DeleteBackup("../evil.bak")
+		assert.Error(t, err)
+		assert.Equal(t, "invalid backup name", err.Error())
+	})
+
+	t.Run("fails when file does not exist", func(t *testing.T) {
+		manager := setupTestDB(t, true)
+
+		err := manager.DeleteBackup("missing.bak")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "path does not exist")
+	})
+
+	t.Run("successfully deletes existing backup", func(t *testing.T) {
+		manager := setupTestDB(t, true)
+
+		tmpDir := manager.config.BackupPath
+		filePath := filepath.Join(tmpDir, "test.bak")
+		err := os.WriteFile(filePath, []byte("backup"), 0644)
+		assert.NoError(t, err)
+
+		err = manager.DeleteBackup("test.bak")
+		assert.NoError(t, err)
+
+		_, statErr := os.Stat(filePath)
+		assert.True(t, os.IsNotExist(statErr))
+	})
+}
+
+func TestListBackups(t *testing.T) {
+	t.Run("returns empty list when no backups exist", func(t *testing.T) {
+		manager := setupTestDB(t, true)
+
+		backups, err := manager.ListBackups()
+		assert.NoError(t, err)
+		assert.Len(t, backups, 0)
+	})
+
+	t.Run("returns backups sorted by CreatedAt descending", func(t *testing.T) {
+		manager := setupTestDB(t, true)
+		dir := manager.config.BackupPath
+
+		file1 := filepath.Join(dir, "old.bak")
+		file2 := filepath.Join(dir, "new.bak")
+
+		assert.NoError(t, os.WriteFile(file1, []byte("old"), 0644))
+		assert.NoError(t, os.WriteFile(file2, []byte("new"), 0644))
+
+		oldTime := time.Now().Add(-2 * time.Hour)
+		newTime := time.Now()
+
+		assert.NoError(t, os.Chtimes(file1, oldTime, oldTime))
+		assert.NoError(t, os.Chtimes(file2, newTime, newTime))
+
+		backups, err := manager.ListBackups()
+		assert.NoError(t, err)
+		assert.Len(t, backups, 2)
+
+		assert.Equal(t, "new.bak", backups[0].Filename)
+		assert.Equal(t, "old.bak", backups[1].Filename)
 	})
 }

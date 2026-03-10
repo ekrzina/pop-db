@@ -24,3 +24,10 @@ type MedicalData struct {
 	BloodType         string
 	MedicalConditions string
 }
+
+// Structure to contain a single person's summary data representation
+type PersonSummary struct {
+	ID      int64
+	Name    string
+	Surname string
+}

@@ -1,12 +1,17 @@
-package db
+package dbman
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/haoli/pop-db/internal/utils"
+
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
@@ -38,10 +43,12 @@ type DbManager struct {
 	OS     utils.OS
 }
 
-// Validate performs non-empty checks on configuration parameters
+var _ IDbManager = (*DbManager)(nil)
+
+// validate performs non-empty checks on configuration parameters
 // Returns:
 //   - error: Returned on empty paths in configuration
-func (c *DbSetup) Validate() error {
+func (c *DbSetup) validate() error {
 	if c.Path == "" {
 		return fmt.Errorf("database.path is required")
 	}
@@ -58,6 +65,22 @@ func (c *DbSetup) Validate() error {
 // Returns:
 //   - error: Returned on unsuccessful table creation.
 func (s *DbManager) migrate() error {
+	path := s.config.Path
+	backup := s.config.BackupPath
+
+	// Ensure directories exist
+	if err := s.validatePath(path); err != nil {
+		if err := s.OS.MkdirAll(path, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	if err := s.validatePath(backup); err != nil {
+		if err := s.OS.MkdirAll(backup, os.ModePerm); err != nil {
+			return err
+		}
+	}
+
+	// Create tables
 	personTable := `
 	CREATE TABLE IF NOT EXISTS person (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,6 +118,23 @@ func (s *DbManager) migrate() error {
 //   - t: Time of database backup writing request.
 func (s *DbManager) generateBackupFilename(t time.Time) string {
 	return s.config.Name + "_" + t.Format("20060102_150405") + ".bak"
+}
+
+// validatePath checks if database backup is located on designated file
+// Parameters:
+//   - backupPath: Full file path name of the backup to restore.
+//
+// Returns:
+//   - error: Error if stating file fails
+func (s *DbManager) validatePath(path string) error {
+	_, err := s.OS.Stat(path)
+	if err != nil {
+		if s.OS.IsNotExist(err) {
+			return fmt.Errorf("path does not exist: %s", path)
+		}
+		return err
+	}
+	return nil
 }
 
 // WriteBackup writes backup database to specified configuraion filepath
@@ -141,22 +181,6 @@ func (s *DbManager) WriteBackup() (*BackupMetadata, error) {
 	return metadata, nil
 }
 
-// ValidateBackup checks if database backup is located on designated file
-// Parameters:
-//   - backupPath: Full file path name of the backup to restore.
-//
-// Returns:
-//   - error: Error if stating file fails
-func (s *DbManager) validateBackup(backupPath string) error {
-	if _, err := s.OS.Stat(backupPath); err != nil {
-		if s.OS.IsNotExist(err) {
-			return fmt.Errorf("backup not found")
-		}
-		return err
-	}
-	return nil
-}
-
 // RestoreBackup overwrites current database with backup database file
 // Parameters:
 //   - filename: Full file name of the backup to restore to.
@@ -165,8 +189,15 @@ func (s *DbManager) validateBackup(backupPath string) error {
 //   - error: Error returned in case backup does not exist, overwriting the database fails or content is not copied properly.
 func (s *DbManager) RestoreBackup(filename string) error {
 	backupPath := filepath.Join(s.config.BackupPath, filename)
-	if err := s.validateBackup(backupPath); err != nil {
+	if err := s.validatePath(backupPath); err != nil {
 		return err
+	}
+	// Close current connection to database before restoring backup
+	realDB, ok := s.DB.(*utils.RealDB)
+	if ok && realDB.DB != nil {
+		if err := realDB.DB.Close(); err != nil {
+			return fmt.Errorf("failed to close active database: %w", err)
+		}
 	}
 	// Open backup file and defer closing
 	src, err := s.OS.Open(backupPath)
@@ -178,8 +209,9 @@ func (s *DbManager) RestoreBackup(filename string) error {
 			s.logger.Error().Err(err).Msg("Failed to close source file")
 		}
 	}()
-	// Create/overwrite active database file
-	dst, err := s.OS.Create(filepath.Join(s.config.Path + s.config.Name))
+	// Create new database file by copying backup file to database path
+	dstPath := filepath.Join(s.config.Path, s.config.Name)
+	dst, err := s.OS.Create(dstPath)
 	if err != nil {
 		return err
 	}
@@ -188,11 +220,71 @@ func (s *DbManager) RestoreBackup(filename string) error {
 			s.logger.Error().Err(err).Msg("Failed to close destination file")
 		}
 	}()
-	// Copy contents
 	if _, err := s.OS.Copy(dst, src); err != nil {
 		return err
 	}
+	// Reopen database connection after restoring backup
+	newDB, err := sql.Open("sqlite3", dstPath)
+	if err != nil {
+		return fmt.Errorf("failed to reopen database: %w", err)
+	}
+	if s.config.ForeignKeys {
+		if _, err := newDB.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+			return fmt.Errorf("failed to re-enable foreign keys: %w", err)
+		}
+	}
+	// Set new database connection
+	s.DB = &utils.RealDB{DB: newDB}
 	return nil
+}
+
+// ListBackups lists all created backups in the config-defined backup directory
+// Returns:
+//   - []BackupMetadata: A list of backup metadata.
+//   - error: Returns error on reading fail.
+func (s *DbManager) ListBackups() ([]BackupMetadata, error) {
+	entries, err := s.OS.ReadDir(s.config.BackupPath)
+	if err != nil {
+		return nil, err
+	}
+	backups := make([]BackupMetadata, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		fullPath := filepath.Join(s.config.BackupPath, e.Name())
+		info, err := s.OS.Stat(fullPath)
+		if err != nil {
+			continue
+		}
+		backups = append(backups, BackupMetadata{
+			Filename:  e.Name(),
+			Path:      fullPath,
+			CreatedAt: info.ModTime(),
+			SizeBytes: info.Size(),
+		})
+	}
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].CreatedAt.After(backups[j].CreatedAt)
+	})
+	return backups, nil
+}
+
+// DeleteBackup deletes selected backup from system
+// Parameters:
+//   - name: Backup file name to delete.
+//
+// Returns:
+//   - error: Error returned on removal fail.
+func (s *DbManager) DeleteBackup(name string) error {
+	if strings.Contains(name, "..") { // prevents "../" path traversal attacks
+		return errors.New("invalid backup name")
+	}
+	fullPath := filepath.Join(s.config.BackupPath, name)
+	if err := s.validatePath(fullPath); err != nil {
+		return err
+	}
+	return s.OS.Remove(fullPath)
 }
 
 // NewDbManager is a database constructor function.
@@ -208,7 +300,7 @@ func NewDbManager(v *viper.Viper, logger zerolog.Logger) (*DbManager, error) {
 	if err := v.UnmarshalKey("database", &cfg); err != nil {
 		return nil, err
 	}
-	if err := cfg.Validate(); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	fullPath := filepath.Join(cfg.Path, cfg.Name)

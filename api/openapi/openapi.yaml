@@ -37,6 +37,22 @@ paths:
                 $ref: '#/components/schemas/DeleteAllResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [Person Repository]
+      summary: Create a new person
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Person'
+      responses:
+        '204':
+          description: Person created successfully. No content returned.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/persons/summary:
     get:
       tags: [Person Repository]
@@ -81,12 +97,8 @@ paths:
             schema:
               $ref: '#/components/schemas/Person'
       responses:
-        '200':
-          description: Updated person.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Person'
+        '204':
+          description: Updated person. No content returned.
         '404':
           $ref: '#/components/responses/NotFound'
         '400':
@@ -97,12 +109,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/personId'
       responses:
-        '200':
-          description: Deletion confirmation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+        '204':
+          description: Person deleted. No content returned.
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/backups:
@@ -110,7 +118,7 @@ paths:
       tags: [DB Management]
       summary: Create database backup
       responses:
-        '201':
+        '200':
           description: Backup created.
           content:
             application/json:
@@ -130,6 +138,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Backup'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/backups/{filename}:
     delete:
       tags: [DB Management]
@@ -141,12 +151,8 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Backup deleted.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+        '204':
+          description: Backup deleted. No content returned.
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/backups/{filename}/restore:
@@ -222,12 +228,6 @@ components:
           type: string
           format: date-time
           example: "2026-02-26T18:25:43Z"
-    DeleteResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: Resource deleted successfully.
     DeleteAllResponse:
       type: object
       properties:
@@ -285,21 +285,22 @@ components:
           $ref: '#/components/schemas/MedicalData'
     PersonSummary:
       type: object
+      required:
+        - id
+        - name
+        - surname
       properties:
         id:
           type: integer
           description: "The identification number of a person."
-          required: true
           example: "1"
         name:
           type: string
           description: "The full first name of the person."
-          required: true
           example: "Arthur"
         surname:
           type: string
           description: "The full last name of the person."
-          required: true
           example: "Dent"
     MedicalData:
       type: object
@@ -339,41 +340,41 @@ components:
           type: string
           example: "Existential confusion."
           description: Additional medical information and known conditions.
-Backup:
-  type: object
-  required:
-    - filename
-    - path
-    - createdAt
-    - sizeBytes
-  properties:
-    filename:
-      type: string
-      example: "population.db_20260225_225013.bak"
-      description: "The filename of the created database backup."
-    path:
-      type: string
-      example: "/datafs/user/population.db_20260225_225013.bak"
-      description: "The full file path of the database backup."
-    createdAt:
-      type: string
-      format: date-time
-      example: "2026-02-25T22:50:13Z"
-      description: "The date and time of the backup creation."
-    sizeBytes:
-      type: integer
-      example: 184320
-      description: "Database backup file size in bytes."
-  RestoreResponse:
-     type: object
-     required:
-       - message
-       - restoredFrom
-     properties:
-       message:
-         type: string
-         example: Database restored successfully.
-       restoredFrom:
-         type: string
-         example: population.db_20260225_225013.bak
-         description: The filename of the backup used for restoration.
+    Backup:
+      type: object
+      required:
+        - filename
+        - path
+        - createdAt
+        - sizeBytes
+      properties:
+        filename:
+          type: string
+          example: "population.db_20260225_225013.bak"
+          description: "The filename of the created database backup."
+        path:
+          type: string
+          example: "/datafs/user/population.db_20260225_225013.bak"
+          description: "The full file path of the database backup."
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-02-25T22:50:13Z"
+          description: "The date and time of the backup creation."
+        sizeBytes:
+          type: integer
+          example: 184320
+          description: "Database backup file size in bytes."
+    RestoreResponse:
+       type: object
+       required:
+         - message
+         - restoredFrom
+       properties:
+         message:
+           type: string
+           example: Database restored successfully.
+         restoredFrom:
+           type: string
+           example: population.db_20260225_225013.bak
+           description: The filename of the backup used for restoration.

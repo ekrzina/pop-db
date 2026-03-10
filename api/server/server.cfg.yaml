@@ -1,0 +1,7 @@
+package: server
+output: api/server/ApiProvider.gen.go
+generate:
+  embedded-spec: true
+  strict-server: true
+  models: true
+  gin-server: true

@@ -6,16 +6,6 @@ import (
 	"os"
 )
 
-type OS interface {
-	ReadFile(string) ([]byte, error)
-	WriteFile(string, []byte, fs.FileMode) error
-	Open(string) (fs.File, error)
-	Create(string) (*os.File, error)
-	Copy(io.Writer, io.Reader) (int64, error)
-	Stat(string) (os.FileInfo, error)
-	IsNotExist(error) bool
-}
-
 // Interface implementation
 type RealOS struct{}
 
@@ -43,6 +33,38 @@ func (r *RealOS) ReadFile(name string) ([]byte, error) {
 //   - error: Error on file writing fail.
 func (r *RealOS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 	return os.WriteFile(name, data, perm)
+}
+
+// MkdirAll is a os.MkdirAll method wrapper
+// Parameters:
+//   - name: File path to write to.
+//   - perm: Permissions to set for the written file.
+//
+// Returns:
+//   - error: Error on making dir fail.
+func (r *RealOS) MkdirAll(name string, perm fs.FileMode) error {
+	return os.Mkdir(name, perm)
+}
+
+// ReadDir is a os.ReadDir method wrapper
+// Parameters:
+//   - name: File path to read.
+//
+// Returns:
+//   - []os.DirEntry: Directory entry interface for reading direcory.
+//   - error: Error returned on directory reading fail.
+func (r *RealOS) ReadDir(name string) ([]os.DirEntry, error) {
+	return os.ReadDir(name)
+}
+
+// Remove is a os.Remove method wrapper
+// Parameters:
+//   - name: File path to remove.
+//
+// Returns:
+//   - error: Returns error on removal fail.
+func (r *RealOS) Remove(name string) error {
+	return os.Remove(name)
 }
 
 // Open is a os.Open method wrapper
