@@ -1,5 +1,7 @@
 # PopDB
 
+[TOC]
+
 ## Introduction
 
 PopDB is a lightweight, personal-use database project designed to manage and display population census data through a dynamic web application. The project integrates a relational SQL database with a streamlined frontend and backend architecture.
@@ -33,7 +35,38 @@ The core of the PopDB application is a relational database that stores user popu
 
 The database is stored in a single `.sqlite` file located in the `assets/` directory. On running the application, if the database file is not found, the backend service will automatically initialize and generate the necessary database structure.
 
-## Application Deployment
+### OpenAPI
+
+The OpenAPI is created using `Swagger Open API`, generated with `openapi` using:
+
+```bash
+go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest --config api/server/server.cfg.yaml api/openapi/openapi.yaml
+```
+
+The `PersonRepository.go` file acts as a central point for connecting the created database and api server. The API server has the following calls:
+
+**1. Person Repository**
+
+- `GET api/v1/persons` - gets all persons in database
+- `POST api/v1/persons` - creates new person in database
+- `DELETE api/v1/persons` - truncates database persons table
+- `GET api/v1/persons/summary` - gets shortened list of person data
+- `GET api/v1/persons/{id}` - get specific person by ID
+- `PUT api/v1/persons/{id}` - update person by ID
+- `DELETE api/v1/persons/{id}` - delete person by ID
+
+**2. Database Management**
+
+- `GET api/v1/backups` - get all backups on device
+- `POST api/v1/backups` - create new backup file
+- `DELETE api/v1/backups/{filename}` - delete backup file
+- `POST api/v1/backups/{filename}/restore` - restore backup
+
+### User Interface
+
+TODO
+
+## API Application Deployment
 
 ### Prerequisites
 
@@ -49,12 +82,6 @@ export CGO_ENABLED=1
 
 ### Build and Run
 
-The openapi code is generated using:
-
-```bash
-go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest --config api/server/server.cfg.yaml api/openapi/openapi.yaml
-```
-
 To build the application, run the code below.
 
 ```bash
@@ -67,3 +94,7 @@ To run the application (on `http://localhost:8080/swagger/`), run the following 
 ```bash
 ./pop-db
 ```
+
+## UI Application Deployment
+
+TODO
