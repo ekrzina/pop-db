@@ -7,7 +7,7 @@ PopDB is a lightweight, personal-use database project designed to manage and dis
 ## Technology Stack
 
 - `SQLLite` - embedded relational database for data storage
-- `Python` - lightweight frontend interface for client-side interactions
+- `Next.js + Tailwind + shadcn/ui + Tanstack Query` - lightweight frontend interface for client-side interactions
 - `Go` - backend server-side logic using the Gin web framework
 
 See details on each part of the project below.
@@ -62,7 +62,7 @@ The `PersonRepository.go` file acts as a central point for connecting the create
 
 ### User Interface
 
-TODO
+The user interface...
 
 ## API Application Deployment
 
@@ -95,4 +95,13 @@ To run the application (on `http://localhost:8080/swagger/`), run the following 
 
 ## UI Application Deployment
 
-TODO
+To run the UI application, use:
+
+```bash
+npm run popdb-ui/dev
+```
+
+`favicon` phoenix logo downloaded here:
+```html
+<a href="" title="phoenix icons">Phoenix icons created by Freepik - Flaticon</a>
+```

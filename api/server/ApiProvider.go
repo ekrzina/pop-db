@@ -19,7 +19,26 @@ type ApiProvider struct {
 
 // GET api/v1/persons
 func (a *ApiProvider) GetApiV1Persons(ctx context.Context, request GetApiV1PersonsRequestObject) (GetApiV1PersonsResponseObject, error) {
-	persons, err := a.repo.GetPersonsWithMedicalData()
+	// Define default values for pagination and filtering
+	field := ""
+	query := ""
+	limit := 20
+	offset := 0
+	// Search parameters are optional, only override defaults if they are provided
+	if request.Params.SearchField != nil {
+		field = string(*request.Params.SearchField)
+	}
+	if request.Params.SearchQuery != nil {
+		query = *request.Params.SearchQuery
+	}
+	if request.Params.Limit != nil {
+		limit = *request.Params.Limit
+	}
+	if request.Params.Offset != nil {
+		offset = *request.Params.Offset
+	}
+	// Fetch filtered & paginated persons from repo
+	persons, err := a.repo.GetPersonsWithMedicalDataFiltered(field, query, limit, offset)
 	if err != nil {
 		return GetApiV1Persons500JSONResponse{
 			InternalServerErrorJSONResponse{
@@ -38,7 +57,10 @@ func (a *ApiProvider) GetApiV1Persons(ctx context.Context, request GetApiV1Perso
 				BloodType:         MedicalDataBloodType(p.Medical.BloodType),
 				Height:            float32(p.Medical.Height),
 				Weight:            float32(p.Medical.Weight),
-				MedicalConditions: &p.Medical.MedicalConditions,
+				MedicalConditions: nil,
+			}
+			if p.Medical.MedicalConditions != "" {
+				medical.MedicalConditions = &p.Medical.MedicalConditions
 			}
 		}
 		response = append(response, Person{
@@ -172,24 +194,36 @@ func (a *ApiProvider) GetApiV1PersonsId(ctx context.Context, request GetApiV1Per
 // PUT api/v1/persons/{id}
 func (a *ApiProvider) PutApiV1PersonsId(ctx context.Context, request PutApiV1PersonsIdRequestObject) (PutApiV1PersonsIdResponseObject, error) {
 	r := request.Body
+	occupation := ""
+	if r.Occupation != nil {
+		occupation = *r.Occupation
+	}
+	notes := ""
+	if r.Notes != nil {
+		notes = *r.Notes
+	}
 	p := &models.Person{
 		ID:          int64(r.Id),
 		Name:        r.Name,
 		Surname:     r.Surname,
-		Occupation:  *r.Occupation,
+		Occupation:  occupation,
 		Nationality: r.Nationality,
 		City:        r.City,
-		Notes:       *r.Notes,
+		Notes:       notes,
 		DateOfBirth: r.DateOfBirth.Time,
 	}
 	var m *models.MedicalData
 	if r.Medical != nil {
+		medCond := ""
+		if r.Medical.MedicalConditions != nil {
+			medCond = *r.Medical.MedicalConditions
+		}
 		m = &models.MedicalData{
 			PersonID:          int64(r.Id),
 			Height:            float64(r.Medical.Height),
 			Weight:            float64(r.Medical.Weight),
 			BloodType:         string(r.Medical.BloodType),
-			MedicalConditions: *r.Medical.MedicalConditions,
+			MedicalConditions: medCond,
 		}
 	}
 	err := a.repo.UpdateFullPerson(p, m)

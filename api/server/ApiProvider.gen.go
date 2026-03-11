@@ -35,6 +35,13 @@ const (
 	O1  MedicalDataBloodType = "O-"
 )
 
+// Defines values for GetApiV1PersonsParamsSearchField.
+const (
+	Name       GetApiV1PersonsParamsSearchField = "name"
+	Occupation GetApiV1PersonsParamsSearchField = "occupation"
+	Surname    GetApiV1PersonsParamsSearchField = "surname"
+)
+
 // Backup defines model for Backup.
 type Backup struct {
 	// CreatedAt The date and time of the backup creation.
@@ -142,6 +149,24 @@ type InternalServerError = ErrorResponse
 // NotFound defines model for NotFound.
 type NotFound = ErrorResponse
 
+// GetApiV1PersonsParams defines parameters for GetApiV1Persons.
+type GetApiV1PersonsParams struct {
+	// SearchField Field to filter by
+	SearchField *GetApiV1PersonsParamsSearchField `form:"searchField,omitempty" json:"searchField,omitempty"`
+
+	// SearchQuery Partial value to search for
+	SearchQuery *string `form:"searchQuery,omitempty" json:"searchQuery,omitempty"`
+
+	// Limit Number of results to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Offset for pagination
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// GetApiV1PersonsParamsSearchField defines parameters for GetApiV1Persons.
+type GetApiV1PersonsParamsSearchField string
+
 // PostApiV1PersonsJSONRequestBody defines body for PostApiV1Persons for application/json ContentType.
 type PostApiV1PersonsJSONRequestBody = Person
 
@@ -165,9 +190,9 @@ type ServerInterface interface {
 	// Delete all persons
 	// (DELETE /api/v1/persons)
 	DeleteApiV1Persons(c *gin.Context)
-	// Get all persons
+	// Get list of persons with optional search and pagination
 	// (GET /api/v1/persons)
-	GetApiV1Persons(c *gin.Context)
+	GetApiV1Persons(c *gin.Context, params GetApiV1PersonsParams)
 	// Create a new person
 	// (POST /api/v1/persons)
 	PostApiV1Persons(c *gin.Context)
@@ -284,6 +309,43 @@ func (siw *ServerInterfaceWrapper) DeleteApiV1Persons(c *gin.Context) {
 // GetApiV1Persons operation middleware
 func (siw *ServerInterfaceWrapper) GetApiV1Persons(c *gin.Context) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetApiV1PersonsParams
+
+	// ------------- Optional query parameter "searchField" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "searchField", c.Request.URL.Query(), &params.SearchField)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter searchField: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "searchQuery" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "searchQuery", c.Request.URL.Query(), &params.SearchQuery)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter searchQuery: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -291,7 +353,7 @@ func (siw *ServerInterfaceWrapper) GetApiV1Persons(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetApiV1Persons(c)
+	siw.Handler.GetApiV1Persons(c, params)
 }
 
 // PostApiV1Persons operation middleware
@@ -582,6 +644,7 @@ func (response DeleteApiV1Persons500JSONResponse) VisitDeleteApiV1PersonsRespons
 }
 
 type GetApiV1PersonsRequestObject struct {
+	Params GetApiV1PersonsParams
 }
 
 type GetApiV1PersonsResponseObject interface {
@@ -785,7 +848,7 @@ type StrictServerInterface interface {
 	// Delete all persons
 	// (DELETE /api/v1/persons)
 	DeleteApiV1Persons(ctx context.Context, request DeleteApiV1PersonsRequestObject) (DeleteApiV1PersonsResponseObject, error)
-	// Get all persons
+	// Get list of persons with optional search and pagination
 	// (GET /api/v1/persons)
 	GetApiV1Persons(ctx context.Context, request GetApiV1PersonsRequestObject) (GetApiV1PersonsResponseObject, error)
 	// Create a new person
@@ -947,8 +1010,10 @@ func (sh *strictHandler) DeleteApiV1Persons(ctx *gin.Context) {
 }
 
 // GetApiV1Persons operation middleware
-func (sh *strictHandler) GetApiV1Persons(ctx *gin.Context) {
+func (sh *strictHandler) GetApiV1Persons(ctx *gin.Context, params GetApiV1PersonsParams) {
 	var request GetApiV1PersonsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetApiV1Persons(ctx, request.(GetApiV1PersonsRequestObject))
@@ -1121,38 +1186,41 @@ func (sh *strictHandler) PutApiV1PersonsId(ctx *gin.Context, id PersonId) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"M8FEAqQOn9a+3QFrc7f5bwAAAP//82goA5skAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
