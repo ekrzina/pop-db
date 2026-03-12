@@ -56,74 +56,97 @@ export default function EditPersonModal({
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
-            <div className="bg-white p-6 rounded shadow-lg w-96 space-y-4">
-                <h2 className="text-xl font-semibold">{isNew ? "Create Person" : "Edit Person"}</h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
 
-                {/* Basic info */}
-                {["name", "surname", "occupation", "dateOfBirth", "nationality", "city", "notes"].map((f) => (
-                    <div key={f}>
-                        <label className="block text-sm font-medium capitalize">{f}</label>
-                        <input
-                            type="text"
-                            className="border p-2 w-full rounded"
-                            value={form[f] || ""}
-                            onChange={(e) => handleChange(f, e.target.value)}
-                        />
-                    </div>
-                ))}
+                {/* Header */}
+                <div className="flex justify-between items-center px-5 py-3 border-b">
+                    <h2 className="text-lg font-semibold">
+                        {isNew ? "Create Person" : "Edit Person"}
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+                    >
+                        ×
+                    </button>
+                </div>
 
-                {/* Medical info */}
-                {form.medical && (
-                    <div className="border-t pt-4 space-y-2">
-                        <div className="text-sm font-medium">Medical Data</div>
+                {/* Scrollable content */}
+                <div className="p-5 space-y-4 overflow-y-auto">
 
-                        <div>
-                            <label className="block text-xs font-medium">Height (cm)</label>
-                            <input
-                                type="number"
-                                className="border p-2 w-full rounded"
-                                value={form.medical.height || ""}
-                                onChange={(e) => handleMedicalChange("height", Number(e.target.value))}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-medium">Weight (kg)</label>
-                            <input
-                                type="number"
-                                className="border p-2 w-full rounded"
-                                value={form.medical.weight || ""}
-                                onChange={(e) => handleMedicalChange("weight", Number(e.target.value))}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-medium">Blood Type</label>
+                    {/* Basic info */}
+                    {["name", "surname", "occupation", "dateOfBirth", "nationality", "city", "notes"].map((f) => (
+                        <div key={f}>
+                            <label className="block text-sm font-medium capitalize mb-1">{f}</label>
                             <input
                                 type="text"
-                                className="border p-2 w-full rounded bg-gray-100"
-                                value={form.medical.bloodType || ""}
-                                readOnly
+                                className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
+                                value={form[f] || ""}
+                                onChange={(e) => handleChange(f, e.target.value)}
                             />
                         </div>
+                    ))}
 
-                        <div>
-                            <label className="block text-xs font-medium">Medical Conditions</label>
-                            <textarea
-                                className="border p-2 w-full rounded"
-                                value={form.medical.medicalConditions || ""}
-                                onChange={(e) => handleMedicalChange("medicalConditions", e.target.value)}
-                            />
+                    {/* Medical info */}
+                    {form.medical && (
+                        <div className="border-t pt-4 space-y-3">
+                            <div className="text-sm font-semibold">Medical Data</div>
+
+                            <div>
+                                <label className="block text-xs font-medium mb-1">Height (cm)</label>
+                                <input
+                                    type="number"
+                                    className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
+                                    value={form.medical.height || ""}
+                                    onChange={(e) => handleMedicalChange("height", Number(e.target.value))}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium mb-1">Weight (kg)</label>
+                                <input
+                                    type="number"
+                                    className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
+                                    value={form.medical.weight || ""}
+                                    onChange={(e) => handleMedicalChange("weight", Number(e.target.value))}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium mb-1">Blood Type</label>
+                                <input
+                                    type="text"
+                                    className="border p-2 w-full rounded-lg bg-gray-100"
+                                    value={form.medical.bloodType || ""}
+                                    readOnly
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium mb-1">Medical Conditions</label>
+                                <textarea
+                                    className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
+                                    value={form.medical.medicalConditions || ""}
+                                    onChange={(e) => handleMedicalChange("medicalConditions", e.target.value)}
+                                />
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
-                <div className="flex gap-2 justify-end">
-                    <button className="px-4 py-2 border rounded" onClick={onClose}>
+                {/* Footer */}
+                <div className="flex justify-end gap-2 px-5 py-3 border-t">
+                    <button
+                        className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+                        onClick={onClose}
+                    >
                         Cancel
                     </button>
-                    <button className="px-4 py-2 bg-black text-white rounded" onClick={handleSubmit}>
+                    <button
+                        className="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-orange-500 transition"
+                        onClick={handleSubmit}
+                    >
                         {isNew ? "Create" : "Save"}
                     </button>
                 </div>

@@ -23,6 +23,21 @@ export default function Home() {
       setSelectedIndex(0) // show first person by default
     })
   }, [])
+  // Keyboard navigation
+  useEffect(() => {
+  const handleKey = (e: KeyboardEvent) => {
+    if (e.key === "ArrowRight") {
+      nextPerson()
+    }
+
+    if (e.key === "ArrowLeft") {
+      prevPerson()
+    }
+  }
+  window.addEventListener("keydown", handleKey)
+  return () => window.removeEventListener("keydown", handleKey)
+}, [persons, selectedIndex, searchQuery])
+
   // Filter persons only if search query exists
   const filteredPersons = searchQuery
     ? persons.filter((p) => {
@@ -77,12 +92,13 @@ export default function Home() {
   const handleCreate = () => setCreatingPerson(true)
 
   return (
-    <main className="p-10 space-y-6">
+    // Screen p4, larger screens p8 or p10, max width 4xl, centered
+    <main className="p-4 sm:p-8 lg:p-10 space-y-6 max-w-4xl mx-auto">
       <SearchBar onSearch={handleSearch} />
 
       {/* Scrollable list only if search is applied */}
       {searchQuery && filteredPersons.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
           {filteredPersons.map((p, idx) => (
             <button
               key={p.id}
@@ -100,16 +116,16 @@ export default function Home() {
       )}
 
       {/* Navigation buttons */}
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-3 items-center">
         <button
-          className="border px-4 py-2 rounded"
+          className="px-5 py-2.5 rounded-xl bg-white shadow hover:shadow-md"
           onClick={prevPerson}
           disabled={selectedIndex === 0}
         >
           Previous
         </button>
         <button
-          className="border px-4 py-2 rounded"
+          className="px-5 py-2.5 rounded-xl bg-white shadow hover:shadow-md"
           onClick={nextPerson}
           disabled={selectedIndex >= persons.length - 1}
         >
@@ -117,14 +133,14 @@ export default function Home() {
         </button>
 
         <button
-          className="border px-4 py-2 rounded"
+          className="px-5 py-2.5 rounded-xl bg-white shadow hover:shadow-md"
           onClick={handleEdit}
           disabled={!currentPerson}
         >
           ✏️ Edit
         </button>
         <button
-          className="border px-4 py-2 rounded"
+          className="px-5 py-2.5 rounded-xl bg-white shadow hover:shadow-md"
           onClick={handleDelete}
           disabled={!currentPerson}
         >
@@ -132,24 +148,30 @@ export default function Home() {
         </button>
 
         <button
-          className="border px-4 py-2 rounded"
           onClick={handleCreate}
+          className="px-4 py-2 rounded-xl bg-rose-500 text-white shadow 
+                transition-all duration-300 
+                hover:bg-orange-500"
         >
-          ➕ Add Person
+          ✚ Add Person
         </button>
 
         <a
           href="/summary"
           target="_blank"
           rel="noopener noreferrer"
-          className="border px-4 py-2 rounded inline-block"
+          className="border px-4 py-2 rounded inline-block hover:bg-gray-100 transition"
         >
-          📋 Summary
+          📋 Summary ↗
         </a>
       </div>
 
       {/* Current person card */}
-      {currentPerson ? <PersonCard person={currentPerson} /> : <div>No persons found</div>}
+      <div className="flex justify-center">
+        {currentPerson ? <PersonCard person={currentPerson} /> : <div className="text-center text-gray-500">
+          No persons found
+        </div>}
+      </div>
 
       {editingPerson && (
         <EditPersonModal

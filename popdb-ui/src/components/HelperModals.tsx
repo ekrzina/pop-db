@@ -10,28 +10,47 @@ export default function BloodTypePickerModal({ value, onSelect, onClose }: Blood
   const bloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded shadow-lg space-y-4 w-80">
-        <h3 className="text-lg font-semibold">Select Blood Type</h3>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col">
 
-        <div className="grid grid-cols-3 gap-2">
+        {/* Header */}
+        <div className="flex justify-between items-center px-5 py-3 border-b">
+          <h3 className="text-lg font-semibold">Select Blood Type</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Options */}
+        <div className="p-5 grid grid-cols-3 gap-3">
           {bloodTypes.map((bt) => (
             <button
               key={bt}
-              className={`border px-3 py-2 rounded hover:bg-black hover:text-white ${value === bt ? "bg-black text-white" : ""}`}
               onClick={() => onSelect(bt)}
+              className={`
+                px-3 py-2 rounded-lg border text-center transition
+                ${value === bt
+                  ? "bg-rose-500 text-white border-rose-500"
+                  : "bg-gray-50 hover:bg-gray-100"}
+              `}
             >
               {bt}
             </button>
           ))}
         </div>
 
-        <button
-          className="mt-2 px-4 py-2 border rounded w-full"
-          onClick={onClose}
-        >
-          Cancel
-        </button>
+        {/* Footer */}
+        <div className="px-5 py-3 border-t">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 border rounded-lg hover:bg-gray-100 transition"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   )
