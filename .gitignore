@@ -8,3 +8,6 @@
 # Ignore build output directory
 bin/
 build/
+dbase/
+backup/
+dist/
