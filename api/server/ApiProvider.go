@@ -22,7 +22,7 @@ func (a *ApiProvider) GetApiV1Persons(ctx context.Context, request GetApiV1Perso
 	// Define default values for pagination and filtering
 	field := ""
 	query := ""
-	limit := 20
+	limit := 100
 	offset := 0
 	// Search parameters are optional, only override defaults if they are provided
 	if request.Params.SearchField != nil {

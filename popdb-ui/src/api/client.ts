@@ -9,8 +9,10 @@ export async function getPerson(id: number) {
   return res.data
 }
 
-export async function getPersons() {
-  const res = await api.get("/api/v1/persons")
+export async function getPersons(limit = 100, offset = 0) {
+  const res = await api.get("/api/v1/persons", {
+    params: { limit, offset },
+  })
   return res.data
 }
 
@@ -25,7 +27,7 @@ export async function updatePerson(id: number, data: any) {
 export async function searchPersons(
   field: "name" | "surname" | "occupation",
   query: string,
-  limit = 20,
+  limit = 100,
   offset = 0
 ) {
   const res = await api.get("/api/v1/persons", {
