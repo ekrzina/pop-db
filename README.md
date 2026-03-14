@@ -149,7 +149,7 @@ npm run start     # serve the built app on port 3000
 A start script `start.sh` has been created for building and running purposes.
 
 ```bash
-chmod +x start.sh   # change permissionsif needed
+chmod +x start.sh   # change permissions if needed
 ```
 
 To **build and run** on your device use the following:
