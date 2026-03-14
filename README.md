@@ -139,7 +139,7 @@ npm run popdb-ui/dev
 
 ```bash
 cd popdb-ui
-npm install      # only the first time or when dependencies change
+npm install       # only the first time or when dependencies change
 npm run build     # creates the `.next` directory with production assets
 npm run start     # serve the built app on port 3000
 ```
