@@ -28,6 +28,17 @@ export default function EditPersonModal({
     }
 
     const handleSubmit = async () => {
+        // === Validation ===
+        if (!form.name.trim() || !form.surname.trim() || !form.city.trim() || !form.nationality.trim()) {
+            alert("Name, Surname, City, and Nationality cannot be empty.")
+            return
+        }
+
+        if (!form.medical || form.medical.height <= 0 || form.medical.weight <= 0) {
+            alert("Height and Weight must be greater than 0.")
+            return
+        }
+
         try {
             const updatedData = { ...form }
             if (updatedData.medical) {
@@ -54,7 +65,6 @@ export default function EditPersonModal({
             alert("Failed to save person.")
         }
     }
-
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
@@ -91,10 +101,10 @@ export default function EditPersonModal({
                     {/* Medical info */}
                     {form.medical && (
                         <div className="border-t pt-4 space-y-3">
-                            <div className="text-sm font-semibold">Medical Data</div>
+                            <div className="text-sm font-semibold mb-2">Medical Data</div>
 
                             <div>
-                                <label className="block text-xs font-medium mb-1">Height (cm)</label>
+                                <label className="block text-sm font-medium mb-1">Height (cm)</label>
                                 <input
                                     type="number"
                                     className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
@@ -104,7 +114,7 @@ export default function EditPersonModal({
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium mb-1">Weight (kg)</label>
+                                <label className="block text-sm font-medium mb-1">Weight (kg)</label>
                                 <input
                                     type="number"
                                     className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
@@ -114,7 +124,7 @@ export default function EditPersonModal({
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium mb-1">Blood Type</label>
+                                <label className="block text-sm font-medium mb-1">Blood Type</label>
                                 <input
                                     type="text"
                                     className="border p-2 w-full rounded-lg bg-gray-100"
@@ -124,7 +134,7 @@ export default function EditPersonModal({
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium mb-1">Medical Conditions</label>
+                                <label className="block text-sm font-medium mb-1">Medical Conditions</label>
                                 <textarea
                                     className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
                                     value={form.medical.medicalConditions || ""}

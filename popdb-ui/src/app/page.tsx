@@ -16,6 +16,7 @@ export default function Home() {
   const [hasNext, setHasNext] = useState(false)
   const [editingPerson, setEditingPerson] = useState<any | null>(null)
   const [creatingPerson, setCreatingPerson] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const LIMIT = 100
   const offset = (page - 1) * LIMIT
@@ -80,11 +81,15 @@ export default function Home() {
   }
 
   const handleDelete = async () => {
-    if (!currentPerson) return
+    if (!currentPerson || loading) return
     if (!confirm(`Are you sure you want to delete ${currentPerson.name} ${currentPerson.surname}?`)) return
-
-    await deletePerson(currentPerson.id)
-    await fetchData()
+    try {
+      setLoading(true)
+      await deletePerson(currentPerson.id)
+      await fetchData()
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleEdit = () => {
@@ -165,9 +170,9 @@ export default function Home() {
         <button
           className="px-5 py-2.5 rounded-xl bg-white shadow hover:shadow-md"
           onClick={handleDelete}
-          disabled={!currentPerson}
+          disabled={!currentPerson || loading}
         >
-          🗑️ Delete
+          {loading ? "Deleting..." : "🗑️ Delete"}
         </button>
 
         <button
