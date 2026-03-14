@@ -28,6 +28,7 @@ export default function CreatePersonModal({
     onClose: () => void
     onSave: (newPerson: PersonForm & { id: number }) => void
 }) {
+    const [saving, setSaving] = useState(false)
     const [form, setForm] = useState<PersonForm>({
         name: "",
         surname: "",
@@ -51,6 +52,17 @@ export default function CreatePersonModal({
     }
 
     const handleSubmit = async () => {
+        // Validation
+        if (!form.name || !form.surname || !form.city || !form.nationality) {
+            alert("Please fill in all required fields: Name, Surname, City, Nationality")
+            return
+        }
+        if (form.medical.height <= 0 || form.medical.weight <= 0) {
+            alert("Height and Weight must be greater than 0")
+            return
+        }
+        if (saving) return // prevent double clicks
+        setSaving(true)
         try {
             await createPerson(form)
             const updatedList = await getPersons()
@@ -59,6 +71,8 @@ export default function CreatePersonModal({
         } catch (err) {
             console.error("Failed to create person:", err)
             alert("Failed to create person.")
+        } finally {
+            setSaving(false)
         }
     }
 
@@ -107,38 +121,47 @@ export default function CreatePersonModal({
                     <div className="border-t pt-4 space-y-3">
                         <div className="text-sm font-semibold">Medical Data</div>
 
-                        <input
-                            type="number"
-                            value={form.medical.height}
-                            onChange={(e) => handleMedicalChange("height", Number(e.target.value))}
-                            placeholder="Height (cm)"
-                            className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
-                        />
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Height (cm)</label>
+                            <input
+                                type="number"
+                                value={form.medical.height}
+                                onChange={(e) => handleMedicalChange("height", Number(e.target.value))}
+                                className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
+                            />
+                        </div>
 
-                        <input
-                            type="number"
-                            value={form.medical.weight}
-                            onChange={(e) => handleMedicalChange("weight", Number(e.target.value))}
-                            placeholder="Weight (kg)"
-                            className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
-                        />
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Weight (kg)</label>
+                            <input
+                                type="number"
+                                value={form.medical.weight}
+                                onChange={(e) => handleMedicalChange("weight", Number(e.target.value))}
+                                className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
+                            />
+                        </div>
 
-                        <button
-                            type="button"
-                            className="border p-2 w-full rounded-lg bg-gray-50 text-left hover:bg-gray-100 transition"
-                            onClick={() => setShowBloodTypePicker(true)}
-                        >
-                            {form.medical.bloodType || "Select Blood Type"}
-                        </button>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Blood Type</label>
+                            <button
+                                type="button"
+                                className="border p-2 w-full rounded-lg bg-gray-50 text-left hover:bg-gray-100 transition"
+                                onClick={() => setShowBloodTypePicker(true)}
+                            >
+                                {form.medical.bloodType || "Select Blood Type"}
+                            </button>
+                        </div>
 
-                        <textarea
-                            value={form.medical.medicalConditions}
-                            onChange={(e) => handleMedicalChange("medicalConditions", e.target.value)}
-                            placeholder="Medical Conditions"
-                            className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
-                        />
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Medical Conditions</label>
+                            <textarea
+                                value={form.medical.medicalConditions}
+                                onChange={(e) => handleMedicalChange("medicalConditions", e.target.value)}
+                                placeholder="Medical Conditions"
+                                className="border p-2 w-full rounded-lg bg-gray-50 focus:ring-2 focus:ring-rose-400 outline-none"
+                            />
+                        </div>
                     </div>
-
                     {showBloodTypePicker && (
                         <BloodTypePickerModal
                             value={form.medical.bloodType}
@@ -163,8 +186,9 @@ export default function CreatePersonModal({
                     <button
                         className="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-orange-500 transition"
                         onClick={handleSubmit}
+                        disabled={saving}
                     >
-                        Create
+                        {saving ? "Creating..." : "Create"}
                     </button>
                 </div>
             </div>
