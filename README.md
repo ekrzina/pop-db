@@ -80,7 +80,18 @@ The `PersonRepository.go` file acts as a central point for connecting the create
 
 ### User Interface
 
-The user interface...
+The PopDB user interface is a web-based frontend built with Next.js, styled using Tailwind CSS and components from shadcn/ui, and uses TanStack Query for efficient client-side data fetching. It communicates with the backend API to display and manage population data in real time.
+
+**Key features of the UI**:
+- Person List: Scrollable buttons representing all persons in the database. Selecting a person displays detailed information in a card.
+- Search & Filtering: Users can search persons by name, surname, or occupation.
+- Pagination & Navigation: Keyboard arrow keys or on-screen buttons navigate between persons and pages.
+- Create & Edit Modals: Pop-up forms for adding or updating a person, with validation to ensure required fields (name, surname, city, nationality) and medical data (height and weight > 0) are correctly filled.
+- Delete Functionality: Users can remove a person with confirmation prompts to prevent accidental deletions.
+- Summary Page: Quick overview of stored persons and key statistics.
+- Responsive Design: Works across desktop and tablet screens, with smooth scrolling and accessible buttons.
+
+All UI interactions trigger API calls to the backend, ensuring that the frontend state reflects the latest database content. Optimistic updates and loading indicators are used to improve the user experience during network requests.
 
 ## API Application Deployment
 
