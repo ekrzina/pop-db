@@ -1,6 +1,6 @@
 "use client"
 
-import { deletePerson, getPersons } from "@/api/client"
+import { deletePerson, getPersons, searchPersons } from "@/api/client"
 import CreatePersonModal from "@/components/CreatePersonModal"
 import EditPersonModal from "@/components/EditPersonModal"
 import PersonCard from "@/components/PersonCard"
@@ -12,83 +12,92 @@ export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [searchField, setSearchField] = useState<"name" | "surname" | "occupation">("name")
   const [searchQuery, setSearchQuery] = useState("")
+  const [page, setPage] = useState(1)
+  const [hasNext, setHasNext] = useState(false)
   const [editingPerson, setEditingPerson] = useState<any | null>(null)
   const [creatingPerson, setCreatingPerson] = useState(false)
 
-  // Fetch all persons once on client-side
+  const LIMIT = 100
+  const offset = (page - 1) * LIMIT
+
+  const fetchData = async () => {
+    try {
+      const fetchLimit = LIMIT + 1
+      const data = searchQuery
+        ? await searchPersons(searchField, searchQuery, fetchLimit, offset)
+        : await getPersons(fetchLimit, offset)
+
+      const slice = data.length > LIMIT ? data.slice(0, LIMIT) : data
+      setPersons(slice)
+      setSelectedIndex(0)
+      setHasNext(data.length > LIMIT)
+    } catch (error) {
+      console.error("Failed to fetch persons:", error)
+    }
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") return
-    getPersons().then((data: any[]) => {
-      setPersons(data)
-      setSelectedIndex(0) // show first person by default
-    })
-  }, [])
+    fetchData()
+  }, [searchField, searchQuery, page])
+
   // Keyboard navigation
   useEffect(() => {
-  const handleKey = (e: KeyboardEvent) => {
-    if (e.key === "ArrowRight") {
-      nextPerson()
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") nextPerson()
+      if (e.key === "ArrowLeft") prevPerson()
     }
 
-    if (e.key === "ArrowLeft") {
-      prevPerson()
-    }
-  }
-  window.addEventListener("keydown", handleKey)
-  return () => window.removeEventListener("keydown", handleKey)
-}, [persons, selectedIndex, searchQuery])
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [persons, selectedIndex])
 
-  // Filter persons only if search query exists
-  const filteredPersons = searchQuery
-    ? persons.filter((p) => {
-      const fieldVal = p[searchField] || ""
-      return fieldVal.toLowerCase().includes(searchQuery.toLowerCase())
-    })
-    : []
+  const currentPerson = persons[selectedIndex] || null
 
-  // Current person to show
-  const currentPerson = searchQuery
-    ? filteredPersons[selectedIndex] || null
-    : persons[selectedIndex] || persons[0] || null
-
-  // Navigation
   const nextPerson = () => {
-    const list = searchQuery ? filteredPersons : persons
-    if (!list.length) return
-    setSelectedIndex((prev) => Math.min(prev + 1, list.length - 1))
+    if (!persons.length) return
+    setSelectedIndex((prev) => Math.min(prev + 1, persons.length - 1))
   }
+
   const prevPerson = () => {
-    const list = searchQuery ? filteredPersons : persons
-    if (!list.length) return
+    if (!persons.length) return
     setSelectedIndex((prev) => Math.max(prev - 1, 0))
   }
-  // Handle search
+
+  const nextPage = () => {
+    if (hasNext) setPage((prev) => prev + 1)
+  }
+
+  const prevPage = () => {
+    setPage((prev) => Math.max(1, prev - 1))
+  }
+
   const handleSearch = (field: "name" | "surname" | "occupation", query: string) => {
     setSearchField(field)
     setSearchQuery(query)
-    setSelectedIndex(0) // first filtered person
+    setPage(1)
+    setSelectedIndex(0)
   }
-  // Edit / Delete
+
   const handleDelete = async () => {
     if (!currentPerson) return
     if (!confirm(`Are you sure you want to delete ${currentPerson.name} ${currentPerson.surname}?`)) return
+
     await deletePerson(currentPerson.id)
-    setPersons((prev) => prev.filter((p) => p.id !== currentPerson.id))
-    setSelectedIndex((prev) => Math.min(prev, persons.length - 2))
+    await fetchData()
   }
+
   const handleEdit = () => {
     if (!currentPerson) return
     setEditingPerson(currentPerson)
   }
-  const handleSaveEdit = (updated: any, isNew = false) => {
-    setPersons((prev) => {
-      const updatedList = isNew ? [...prev, updated] : prev.map((p) => (p.id === updated.id ? updated : p))
-      if (isNew) setSelectedIndex(updatedList.length - 1)
-      return updatedList
-    })
+
+  const handleSaveEdit = async () => {
     setEditingPerson(null)
     setCreatingPerson(false)
+    await fetchData()
   }
+
   const handleCreate = () => setCreatingPerson(true)
 
   return (
@@ -96,24 +105,38 @@ export default function Home() {
     <main className="p-4 sm:p-8 lg:p-10 space-y-6 max-w-4xl mx-auto">
       <SearchBar onSearch={handleSearch} />
 
-      {/* Scrollable list only if search is applied */}
-      {searchQuery && filteredPersons.length > 0 && (
+      {/* Scrollable list of current page */}
+      {persons.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-          {filteredPersons.map((p, idx) => (
+          {persons.map((p, idx) => (
             <button
               key={p.id}
-              onClick={() => {
-                setSelectedIndex(persons.findIndex((pp) => pp.id === p.id))
-                setSearchQuery("") // reset filter after click
-              }}
-              className={`border px-3 py-1 rounded whitespace-nowrap ${persons[selectedIndex]?.id === p.id ? "bg-black text-white" : ""
-                }`}
+              onClick={() => setSelectedIndex(idx)}
+              className={`border px-3 py-1 rounded whitespace-nowrap ${persons[selectedIndex]?.id === p.id ? "bg-black text-white" : ""}`}
             >
               {p.name} {p.surname}
             </button>
           ))}
         </div>
       )}
+
+      <div className="flex gap-2 items-center text-sm text-gray-700">
+        <span>Page {page}</span>
+        <button
+          className="px-3 py-1 rounded bg-white shadow hover:shadow-md"
+          onClick={prevPage}
+          disabled={page === 1}
+        >
+          Prev page
+        </button>
+        <button
+          className="px-3 py-1 rounded bg-white shadow hover:shadow-md"
+          onClick={nextPage}
+          disabled={!hasNext}
+        >
+          Next page
+        </button>
+      </div>
 
       {/* Navigation buttons */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -183,10 +206,9 @@ export default function Home() {
       {creatingPerson && (
         <CreatePersonModal
           onClose={() => setCreatingPerson(false)}
-          onSave={(newPerson) => {
-            setPersons((prev) => [...prev, newPerson])
-            setSelectedIndex(persons.length)
+          onSave={async () => {
             setCreatingPerson(false)
+            await fetchData()
           }}
         />
       )}

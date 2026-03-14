@@ -97,7 +97,8 @@ func (r *PersonRepository) CreateFullPerson(p *models.Person, m *models.MedicalD
 func (r *PersonRepository) ListPersons() ([]models.PersonSummary, error) {
 	r.logger.Trace().Msg("Listing all persons summary")
 	rows, err := r.manager.DB.Query(`
-		SELECT id, name, surname FROM person`)
+		SELECT id, name, surname FROM person
+		ORDER BY surname ASC, name ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -207,6 +208,7 @@ func (r *PersonRepository) GetPersonsWithMedicalData() ([]models.Person, error) 
             m.height, m.weight, m.blood_type, m.medical_conditions
         FROM person p
         LEFT JOIN medical_data m ON p.id = m.person_id
+        ORDER BY p.surname ASC, p.name ASC
     `)
 	if err != nil {
 		return nil, err
@@ -333,7 +335,7 @@ func (r *PersonRepository) GetPersonsWithMedicalDataFiltered(field string, query
 	if whereClause != "" {
 		baseQuery += " " + whereClause
 	}
-	baseQuery += " LIMIT ? OFFSET ?"
+	baseQuery += " ORDER BY p.surname ASC, p.name ASC LIMIT ? OFFSET ?"
 	var rows *sql.Rows
 	var err error
 	if whereClause != "" {
